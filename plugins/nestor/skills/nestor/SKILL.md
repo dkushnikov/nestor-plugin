@@ -173,7 +173,7 @@ After every Nestor consultation, append a metadata record to the current session
   atlas_added_qualification: <true | false; if true, what session context shaped the qualification>
 ```
 
-This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Without it, there is no way to tell after ~10 uses whether the router is earning its keep or whether the persona layer adds signal beyond the raw ai-council skill. Do not skip the logging step.
+This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Without it, there is no way to tell after ~10 uses whether the router is earning its keep or whether the persona layer adds signal beyond direct `mcp__pal__consensus` calls without the Nestor wrapper. Do not skip the logging step.
 
 ## What NOT to do
 
