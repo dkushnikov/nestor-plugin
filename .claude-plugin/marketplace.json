@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "nestor-plugin",
+  "description": "Nestor — the Atlas deliberation counsellor. Named consultation mode wrapping multi-model council deliberation for high-stakes decisions.",
+  "owner": {
+    "name": "Dmitry Kushnikov",
+    "email": "dkushnikov@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "nestor",
+      "description": "Convene a council of frontier models for third-opinion consultation. Routes questions to adversarial or deliberative mode based on shape; returns synthesised judgment with explicit disagreement reporting.",
+      "source": "./plugins/nestor",
+      "category": "decision-support",
+      "homepage": "https://github.com/dkushnikov/nestor"
+    }
+  ]
+}
