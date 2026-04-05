@@ -1,6 +1,6 @@
 ---
 name: nestor
-description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "high stakes", "critical decision", "think carefully", or "deliberate". Also invoke when the Atlas partner judges its own answer under-calibrated and needs an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server and returns a synthesised judgment with explicit disagreement reporting, a routing announcement, and structured I/O.
+description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "критично", "high stakes", "critical decision", "think carefully", or "deliberate". Also invoke when the Atlas partner judges its own answer under-calibrated and needs an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server, announces its routing decision before running, and returns a synthesised judgment with an explicit agreement map and dissenting views.
 ---
 
 # Nestor
@@ -13,7 +13,7 @@ This skill is a wrapper over the lower-level `ai-council` skill at `~/Atlas/skil
 
 Invoke this skill when:
 
-**The user uses an explicit trigger phrase** (already matched by the skill loader via the description above). The full phrase list: "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор" (→ forces deliberative mode), "важное решение", "high stakes", "критично", "think carefully", "deliberate".
+**The user uses an explicit trigger phrase** (already matched by the skill loader via the description above). The full phrase list: "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор" (→ forces deliberative mode), "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate".
 
 **An implicit condition matches and Atlas decides to delegate without being asked**:
 
@@ -41,11 +41,27 @@ Execute these six steps in order for every Nestor consultation:
 
 Translate the user's situation into a fully self-contained question. Every fact the council needs — user context, domain constraints, team size, prior decisions, named options — must be embedded in the question text. Session memory does not travel to the council.
 
+**Example of under-specified vs self-contained**:
+
+- Under-specified: *"Should I rewrite my CLI tool from Python to Go?"*
+- Self-contained: *"I maintain a CLI tool, ~3k lines of Python, used daily by a team of 4 engineers. Performance is adequate; the pain points are dependency management and single-binary distribution. Should I rewrite in Go, or address packaging in-place with pipx / shiv / pyinstaller?"*
+
+The under-specified version leaves the council guessing about the actual tradeoffs; the self-contained version lets it reason about the problem the user actually has.
+
 If the user's situation lacks a required detail, ask the user first rather than guessing. A bad question produces a bad council output; the question-quality gate is the single most important step in the whole protocol.
 
 ### Step 2 — Route the question
 
-Apply the router decision table below to select mode, preset, and stances. Match rules in order; first match wins. If no rule matches with confidence, go to Step 3 with `status: needs_clarification` and return to the user for more context instead of guessing.
+Apply the router decision table below to select four outputs:
+
+- `mode`: adversarial or deliberative
+- `preset`: `arch` / `code` / `research` / `brainstorm` / `quick`
+- `stances`: per-model assignment (default all-neutral)
+- `question_framing`: the exact text sent to each council model
+
+For rules 2–5, `question_framing` is simply the self-contained question from Step 1, passed through unchanged. For rule 1 (named hypothesis to red-team), `question_framing` additionally includes a per-model `stance_prompt` tuned to the specific hypothesis — e.g., one model receives "argue for <hypothesis>", another "argue against <hypothesis>", a third "argue from a skeptical neutral stance". The stance-specific framing is what makes adversarial mode sharp; do not pass the raw question to stance-assigned models and expect them to infer the attack angle.
+
+Match rules in order; first match wins. If no rule matches with confidence, go to Step 3 with `status: needs_clarification` and return to the user for more context instead of guessing.
 
 ### Step 3 — Announce the routing before executing
 
@@ -68,6 +84,8 @@ This announcement is **mandatory**, not optional. It catches confident mis-routi
 Use `mcp__pal__consensus` for stage 1 of any mode, and for adversarial mode end-to-end. For deliberative mode, after collecting three neutral first-round answers, run three parallel `mcp__pal__chat` calls to collect anonymised cross-critiques. Consult the `ai-council` skill's deliberative mode section for the exact stage-2 prompt template — do not rewrite it from scratch.
 
 Use the model roster from the chosen preset as defined in ai-council's preset table. Do not invent new model combinations inside Nestor; the presets exist so that routing stays small and testable.
+
+**Degraded-run handling**: if a model fails, times out, or returns an unusable response (empty, obviously truncated, or off-topic), proceed with the remaining models and flag the degraded roster in the return envelope's `confidence` field — e.g., `"medium, caveat: only 2/3 models responded usefully; the third returned a parse error"`. If fewer than two models produce usable output, abort synthesis and report the failure to the user honestly rather than papering over a broken council run with a forced single-model synthesis.
 
 ### Step 5 — Synthesise the judgment
 
@@ -150,13 +168,14 @@ This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas
 
 ## What NOT to do
 
-- **Do NOT count votes across stance-assigned runs.** If rule 1 fires and stances are assigned, "2/3 agree" is meaningless — one model was instructed to argue the opposite. Report the judgment but flag the stance structure honestly. This anti-pattern is documented in the ai-council skill as "the Gemini Flip" finding.
+- **Do NOT count votes across stance-assigned runs.** If rule 1 fires and stances are assigned, "2/3 agree" is meaningless — one model was instructed to argue the opposite. Report the judgment but flag the stance structure honestly. See the ai-council skill's "Stances" section for the roleplay-not-belief framing; the underlying empirical finding (the "Gemini Flip" — same model flipping position between `against` and `neutral` stances at identical confidence) is documented in `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md`.
 - **Do NOT skip deliberative stage 2 when stage 1 is unanimous.** Unanimity is not a signal the council got it right; shared blind spots are invisible in unanimous answers. The verified A/B run on 2026-04-05 showed peer critique catching four major unaddressed requirements and two factual errors in a 3/3 unanimous first-round set.
 - **Do NOT simulate a Nestor personality, voice, or backstory.** Nestor is a function wearing a name, not a character. Respond with structure and discipline, not mannerisms.
 - **Do NOT call Nestor recursively inside a Nestor consultation.** One round, one synthesis. Multi-round debate introduces anchoring bias.
 - **Do NOT blend Nestor's judgment with session-context qualifications silently.** The presentation protocol separation is the only way the user can tell where Nestor's output ends and Atlas's contextual read begins.
 - **Do NOT claim context-free judgment.** v1 Nestor is fresh-read consultation with reduced bias. Full architectural isolation is a v2 escape hatch (separate sterile synthesis API call), not a v1 guarantee.
 - **Do NOT invoke Nestor when the user explicitly asks for Atlas's own opinion.** If the user says "what do you think?", answer as Atlas directly. Do not deflect to the council.
+- **Do NOT persist Nestor-specific state between calls.** Run metadata goes to the current session log only — not to a dedicated Nestor store, not to global memory. Each consultation starts at zero. This statelessness is enforced by the plugin having no storage layer; do not work around it.
 
 ## Kill criteria
 
@@ -164,7 +183,7 @@ v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions (rout
 
 ## Related
 
-- `~/Atlas/skills/ai-council/SKILL.md` — the lower-level deliberation protocol Nestor wraps (modes, stances, presets, deliberative stage 2, the Gemini Flip anti-pattern)
+- `~/Atlas/skills/ai-council/SKILL.md` — the lower-level deliberation protocol Nestor wraps (modes, stances, presets, deliberative stage 2, the roleplay-not-belief stance caveat)
 - `~/Obsidian/Atlas/Projects/Nestor/Nestor.md` — project overview with principles, team positioning, kill criteria
 - `~/Obsidian/Atlas/Projects/Nestor/specs/Core Design.md` — full technical spec, open questions, v2 migration paths
 - `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md` — the verified deliberation protocol this whole stack sits on
