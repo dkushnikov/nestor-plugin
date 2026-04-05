@@ -1,19 +1,24 @@
 ---
 name: nestor
-description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "критично", "high stakes", "critical decision", "think carefully", or "deliberate". Also invoke when the Atlas partner judges its own answer under-calibrated and needs an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server, announces its routing decision before running, and returns a synthesised judgment with an explicit agreement map and dissenting views.
+description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate", "council", "совет", "спросить модели", "second opinion", "что думают другие", "what does the council think", or mentions needing multi-model consultation. Also invoke when the Atlas partner judges its own answer under-calibrated and needs an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server, announces its routing decision before running, and returns a synthesised judgment with an explicit agreement map and dissenting views.
 ---
 
 # Nestor
 
 Nestor is the named consultation mode of the Atlas AI team. When the user or Atlas needs a multi-model council on a hard decision, invoke this skill to run the deliberation through a disciplined protocol: self-contained question formulation, routing, council execution, synthesis, and structured presentation back to the user.
 
-This skill is a wrapper over the lower-level `ai-council` skill at `~/Atlas/skills/ai-council/SKILL.md`. Nestor adds trigger recognition, a mini-reasoning router, input/output envelopes, presentation discipline, and run metadata logging. The council mechanics themselves (modes, presets, stance semantics, deliberative stage 2) live in ai-council — consult it during execution for the actual model-call details.
+This skill is **self-contained**. The core protocol — triggers, router, envelopes, presentation, kill criteria — lives in this file. Detailed deliberation mechanics (preset model rosters, fallback chains, the `pal.consensus` step-by-step workflow, stance semantics with the Gemini Flip empirical finding, and the deliberative stage-2 cross-critique template) live in `references/` within this skill and are loaded on demand:
+
+- `references/presets.md` — model rosters for `arch` / `code` / `research` / `brainstorm` / `quick` plus per-vendor fallback chains
+- `references/consensus-execution.md` — `mcp__pal__consensus` step-by-step workflow, `continuation_id` handling, stepping discipline
+- `references/stances-and-gemini-flip.md` — stance semantics (`for` / `against` / `neutral` as roleplay-not-belief) and the Gemini Flip finding
+- `references/deliberative-stage-2.md` — cross-critique protocol, the verbatim critique prompt template, anti-patterns
 
 ## When to invoke
 
 Invoke this skill when:
 
-**The user uses an explicit trigger phrase** (already matched by the skill loader via the description above). The full phrase list: "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор" (→ forces deliberative mode), "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate".
+**The user uses an explicit trigger phrase** (already matched by the skill loader via the description above). The full phrase list: "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор" (→ forces deliberative mode), "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate", "council", "совет", "спросить модели", "second opinion", "что думают другие", "what does the council think".
 
 **An implicit condition matches and Atlas decides to delegate without being asked**:
 
@@ -81,13 +86,15 @@ This announcement is **mandatory**, not optional. It catches confident mis-routi
 
 ### Step 4 — Run the council
 
-Use `mcp__pal__consensus` for stage 1 of any mode, and for adversarial mode end-to-end. **Step through the entire consensus workflow with every model in the preset — do not shortcut to parallel `mcp__pal__chat` calls on a subset of models, even for `quick` preset.** The consensus workflow's step-by-step structure with the full model roster is a reliability guarantee, not ceremony. For `quick` preset specifically: three sequential consensus steps (one per model — `google/gemini-2.5-flash`, `openai/gpt-5.4-mini`, `anthropic/claude-haiku-4.5`) before synthesis. `mcp__pal__chat` is only for deliberative mode's stage-2 cross-critique round, never as a substitute for the consensus workflow itself.
+Use `mcp__pal__consensus` for stage 1 of any mode, and for adversarial mode end-to-end. **Step through the entire consensus workflow with every model in the preset — the full preset roster is authoritative at runtime.** The step-by-step consensus workflow with the full roster is what makes "preset" mean something; it provides the reproducibility guarantee that kill-criteria tracking depends on.
 
-For deliberative mode, after collecting three neutral first-round answers via `mcp__pal__consensus`, run three parallel `mcp__pal__chat` calls to collect anonymised cross-critiques. Consult the `ai-council` skill's deliberative mode section for the exact stage-2 prompt template — do not rewrite it from scratch.
+For parameter-level details of the `mcp__pal__consensus` workflow (step numbers, `continuation_id` handling, per-step parameters), see `references/consensus-execution.md`. For the model roster and per-vendor fallback chains of the chosen preset, see `references/presets.md`. Do not invent new model combinations inside Nestor; the presets exist so that routing stays small and testable.
 
-Use the model roster from the chosen preset as defined in ai-council's preset table. Do not invent new model combinations inside Nestor; the presets exist so that routing stays small and testable.
+For deliberative mode, after collecting three neutral first-round answers via `mcp__pal__consensus`, run three parallel `mcp__pal__chat` calls to collect anonymised cross-critiques. The cross-critique protocol, the verbatim stage-2 prompt template, and the associated anti-patterns live in `references/deliberative-stage-2.md`. Use that template verbatim; do not improvise.
 
-**Degraded-run handling**: if a model fails, times out, or returns an unusable response (empty, obviously truncated, or off-topic), proceed with the remaining models and flag the degraded roster in the return envelope's `confidence` field — e.g., `"medium, caveat: only 2/3 models responded usefully; the third returned a parse error"`. If fewer than two models produce usable output, abort synthesis and report the failure to the user honestly rather than papering over a broken council run with a forced single-model synthesis.
+`mcp__pal__chat` is **only** for deliberative stage-2 cross-critique — never a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
+
+**Degraded-run handling**: if a model fails, times out, or returns an unusable response (empty, obviously truncated, or off-topic) during a legitimate consensus run, proceed with the remaining models and flag the degraded roster in the return envelope's `confidence` field — e.g., `"medium, caveat: only 2/3 models responded usefully; the third returned a parse error"`. If fewer than two models produce usable output, abort synthesis and report the failure to the user honestly rather than papering over a broken council run with a forced single-model synthesis. Degraded handling is for **infrastructure failure**, not for pre-emptive optimisation — see the related "Do NOT deviate from the preset roster" anti-pattern below.
 
 ### Step 5 — Synthesise the judgment
 
@@ -170,9 +177,9 @@ This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas
 
 ## What NOT to do
 
-- **Do NOT count votes across stance-assigned runs.** If rule 1 fires and stances are assigned, "2/3 agree" is meaningless — one model was instructed to argue the opposite. Report the judgment but flag the stance structure honestly. See the ai-council skill's "Stances" section for the roleplay-not-belief framing; the underlying empirical finding (the "Gemini Flip" — same model flipping position between `against` and `neutral` stances at identical confidence) is documented in `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md`.
-- **Do NOT skip deliberative stage 2 when stage 1 is unanimous.** Unanimity is not a signal the council got it right; shared blind spots are invisible in unanimous answers. The verified A/B run on 2026-04-05 showed peer critique catching four major unaddressed requirements and two factual errors in a 3/3 unanimous first-round set.
-- **Do NOT substitute `mcp__pal__chat` for `mcp__pal__consensus` in any preset, including `quick`.** Stepping through the full consensus workflow with every model in the preset is a reliability guarantee, not ceremony — it is what makes "preset" mean something. Shortcutting to parallel `mcp__pal__chat` calls on a subset of models violates the preset contract and silently ships a 2-model result as if it were the full preset. This anti-pattern was observed on Nestor's first real-use run (2026-04-05, run #1): Claude-as-Nestor used two `pal.chat` calls instead of the three-step `pal.consensus` workflow. If fewer than the full preset respond after a legitimate consensus run, invoke the degraded-run handling described in Step 4 — flag the missing model in the `confidence` field, do not hide the degradation.
+- **Do NOT count votes across stance-assigned runs.** If rule 1 fires and stances are assigned, "2/3 agree" is meaningless — one model was instructed to argue the opposite. Report the judgment but flag the stance structure honestly. See `references/stances-and-gemini-flip.md` for the roleplay-not-belief framing and the Gemini Flip empirical finding (same model flipping position between `against` and `neutral` stances at identical confidence).
+- **Do NOT skip deliberative stage 2 when stage 1 is unanimous.** Unanimity is not a signal the council got it right; shared blind spots are invisible in unanimous answers. The verified A/B run on 2026-04-05 showed peer critique catching four major unaddressed requirements and two factual errors in a 3/3 unanimous first-round set. See `references/deliberative-stage-2.md`.
+- **Do NOT deviate from the preset model roster at runtime, even with defensible reasoning.** Observed on Nestor's first real-use run (2026-04-05, run #1): Claude-as-Nestor excluded `claude-haiku-4.5` from the `quick` preset based on a cross-provider correlation-avoidance argument — the reasoning was *"the synthesizer is Claude, so including Claude in the roster correlates errors; cross-provider pair gives more independent signal."* The argument is defensible in design review, but **unauthorised at runtime**. Preset rosters are spec-level decisions; if you have an argument for changing a roster, surface it to the user as a spec discussion, not a runtime override. Runtime deviation breaks reproducibility across runs, makes kill-criteria metrics noisy, and cannot be validated at the moment of deviation — only in design review. If the full preset cannot respond because of infrastructure failure (model unavailable, timeout, parse error), that is the **degraded-run case** in Step 4 — not a license for pre-emptive optimisation.
 - **Do NOT simulate a Nestor personality, voice, or backstory.** Nestor is a function wearing a name, not a character. Respond with structure and discipline, not mannerisms.
 - **Do NOT call Nestor recursively inside a Nestor consultation.** One round, one synthesis. Multi-round debate introduces anchoring bias.
 - **Do NOT blend Nestor's judgment with session-context qualifications silently.** The presentation protocol separation is the only way the user can tell where Nestor's output ends and Atlas's contextual read begins.
@@ -182,11 +189,17 @@ This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas
 
 ## Kill criteria
 
-v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions (router override rate > 50%, synthesis indistinguishable from direct ai-council call, latency avoidance, cognitive tax) and the full rip-out procedure are documented at `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Rip-out cost is near zero — the underlying ai-council skill continues to work without Nestor.
+v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions (router override rate > 50%, synthesis indistinguishable from direct pal-consensus calls, latency avoidance, cognitive tax) and the full rip-out procedure are documented at `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Rip-out cost is near zero: delete this plugin repo. If deliberation capability is still wanted post-rip-out, the preset rosters and protocol details are preserved in git history (this repo) and `references/` files — they can be re-activated as a standalone skill in `~/Atlas/skills/` without rebuilding from scratch.
 
 ## Related
 
-- `~/Atlas/skills/ai-council/SKILL.md` — the lower-level deliberation protocol Nestor wraps (modes, stances, presets, deliberative stage 2, the roleplay-not-belief stance caveat)
+**Within this plugin (progressive disclosure — load on demand):**
+- `references/presets.md` — model rosters + per-vendor fallback chains
+- `references/consensus-execution.md` — `mcp__pal__consensus` step-by-step workflow details
+- `references/stances-and-gemini-flip.md` — stance semantics + Gemini Flip empirical finding
+- `references/deliberative-stage-2.md` — cross-critique protocol + verbatim prompt template
+
+**Outside this plugin (project-level context):**
 - `~/Obsidian/Atlas/Projects/Nestor/Nestor.md` — project overview with principles, team positioning, kill criteria
 - `~/Obsidian/Atlas/Projects/Nestor/specs/Core Design.md` — full technical spec, open questions, v2 migration paths
-- `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md` — the verified deliberation protocol this whole stack sits on
+- `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md` — the verified deliberation protocol this whole stack sits on, including the recursive critique run and the Gemini Flip verification transcripts
