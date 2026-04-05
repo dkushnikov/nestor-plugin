@@ -69,11 +69,15 @@ Experimental (v0.1.0 — 2026-04-05). Kill criteria are defined in `~/Obsidian/A
 
 ## Related
 
-- `~/Atlas/skills/ai-council/SKILL.md` — the lower-level deliberation skill Nestor wraps (can still be called directly for ad-hoc consultations without the Nestor persona layer)
+- `plugins/nestor/skills/nestor/references/` — in-plugin progressive-disclosure files with the absorbed deliberation mechanics (preset rosters, pal.consensus workflow, stance semantics with Gemini Flip finding, deliberative stage-2 template)
 - `~/Obsidian/Atlas/Projects/Nestor/` — full design: `Nestor.md`, `Current State.md`, `specs/Core Design.md`
 - `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md` — the verified deliberation protocol Nestor uses under the hood
 - `~/Code/mnemon-plugin` — sibling plugin (the knowledge-library persona of the Atlas team)
 - `~/Code/pal-mcp-server` — the MCP server Nestor depends on
+
+## History note
+
+This plugin absorbed the content of the previously-standalone `ai-council` skill at `~/Atlas/skills/ai-council/SKILL.md` on 2026-04-05. The ai-council skill was retired (Atlas commit `8f5bf59`) and its deliberation mechanics were moved into this plugin's `references/` directory as progressive-disclosure files. Consolidation was driven by a usability review — two overlapping skills didn't earn their coexistence. The rip-out path is preserved in git history of both repos.
 
 ## License
 
