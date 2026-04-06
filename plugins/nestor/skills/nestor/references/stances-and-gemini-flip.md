@@ -17,7 +17,7 @@ When calling `mcp__pal__consensus`, each model in the roster can be assigned a `
 Specifically:
 
 **Question 1 — memory precedence design**
-- `against` stance: *"Any static precedence scheme is fundamentally flawed... Atlas must use explicit conflict surfacing backed by a Shift-to-Explicit-Exceptions abstraction."*
+- `against` stance: *"Any static precedence scheme is fundamentally flawed... the system must use explicit conflict surfacing backed by a Shift-to-Explicit-Exceptions abstraction."*
 - `neutral` stance: *"Strict most-local wins (Lexical Scoping) is the uniquely correct primary mechanism because it directly maps to the standard software engineering mental model of variable shadowing."*
 
 Same model. Same prompt. Opposite conclusions. 9/10 confidence in both directions.
@@ -54,4 +54,4 @@ If you need a directional signal across models, use:
 
 ## Cross-reference
 
-The full Gemini Flip finding with verbatim verification-run transcripts is documented in `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md`. That document also contains the recursive-council run on the Nestor design itself, which produced the same finding from a different angle.
+The Gemini Flip finding was discovered during a structured A/B verification run on 2026-04-05. The verification tested both adversarial and deliberative modes across two questions, with identical questions run under different stance configurations to isolate the stance variable. The finding was independently confirmed by a recursive-council run on the Nestor design itself.

@@ -1,11 +1,11 @@
 ---
 name: nestor
-description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate", "council", "совет", "спросить модели", "second opinion", "что думают другие", "what does the council think", or mentions needing multi-model consultation. Also invoke when the Atlas partner judges its own answer under-calibrated and needs an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server, announces its routing decision before running, and returns a synthesised judgment with an explicit agreement map and dissenting views.
+description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate", "council", "совет", "спросить модели", "second opinion", "что думают другие", "what does the council think", or mentions needing multi-model consultation. Also invoke when you judge your own answer under-calibrated and need an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server, announces its routing decision before running, and returns a synthesised judgment with an explicit agreement map and dissenting views.
 ---
 
 # Nestor
 
-Nestor is the named consultation mode of the Atlas AI team. When the user or Atlas needs a multi-model council on a hard decision, invoke this skill to run the deliberation through a disciplined protocol: self-contained question formulation, routing, council execution, synthesis, and structured presentation back to the user.
+Nestor is a named consultation mode for multi-model deliberation. When the user or the session needs a multi-model council on a hard decision, invoke this skill to run the deliberation through a disciplined protocol: self-contained question formulation, routing, council execution, synthesis, and structured presentation back to the user.
 
 This skill is **self-contained**. The core protocol — triggers, router, envelopes, presentation, kill criteria — lives in this file. Detailed deliberation mechanics (preset model rosters, fallback chains, the `pal.consensus` step-by-step workflow, stance semantics with the Gemini Flip empirical finding, and the deliberative stage-2 cross-critique template) live in `references/` within this skill and are loaded on demand:
 
@@ -20,7 +20,7 @@ Invoke this skill when:
 
 **The user uses an explicit trigger phrase** (already matched by the skill loader via the description above). The full phrase list: "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор" (→ forces deliberative mode), "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate", "council", "совет", "спросить модели", "second opinion", "что думают другие", "what does the council think".
 
-**An implicit condition matches and Atlas decides to delegate without being asked**:
+**An implicit condition matches and you decide to delegate without being asked**:
 
 - Architectural or strategic decisions with high irreversibility
 - The session's current answer feels under-calibrated or session-biased
@@ -32,11 +32,11 @@ Invoke this skill when:
 - Simple factual questions (answer directly or consult the knowledge library)
 - In-the-moment implementation decisions with low reversibility cost
 - Routine work where committee deliberation adds latency without signal
-- When the user explicitly asks for Atlas's own opinion ("what do you think?") — answer in Atlas's voice, do not deflect to the council
+- When the user explicitly asks for your own opinion ("what do you think?") — answer directly, do not deflect to the council
 
 ## Prerequisites
 
-Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Surface this actionable message to the user: *"`pal` MCP server is not available in this session. See `~/Code/pal-mcp-server` (or the upstream pal project) for installation. Nestor cannot run without it."*
+Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Surface this actionable message to the user: *"`pal` MCP server is not available in this session. Install it from [github.com/BeehiveInnovations/pal-mcp-server](https://github.com/BeehiveInnovations/pal-mcp-server). Nestor cannot run without it."*
 
 ## Core protocol
 
@@ -104,7 +104,7 @@ Acknowledge the honest v1 limitation: the in-session Claude performing this synt
 
 ### Step 6 — Present to the user
 
-Use the presentation protocol below. Lead with Nestor's judgment. Add Atlas's own read only if session context materially qualifies the judgment. Keep the two layers visible — never blend them.
+Use the presentation protocol below. Lead with Nestor's judgment. Add your own session-aware read only if session context materially qualifies the judgment. Keep the two layers visible — never blend them.
 
 ## The router
 
@@ -119,7 +119,7 @@ Match rules in order. First match wins. Rule 6 is the safe fallback when nothing
 | 5 | Low-stakes sanity check ("quick check", "is this reasonable", "obvious mistakes") | adversarial | quick | all-neutral |
 | 6 | None of the above matches confidently | — | — | Return `status: needs_clarification` with a specific question; do not guess |
 
-## Call envelope (Atlas → Nestor)
+## Call envelope (session → Nestor)
 
 The question passed to the council carries this logical shape, even when implemented as structured prose inside the `mcp__pal__consensus` call's `step` parameter:
 
@@ -144,7 +144,7 @@ unaddressed_gaps: <what the question did not account for that the council notice
 
 ## Presentation protocol
 
-When presenting Nestor's judgment to the user, use this form if Atlas has session context that adds material qualifications:
+When presenting Nestor's judgment to the user, use this form if session context adds material qualifications:
 
 ```
 **Nestor says**: <judgment + confidence + key reasoning>
@@ -153,12 +153,12 @@ When presenting Nestor's judgment to the user, use this form if Atlas has sessio
 
 **What Nestor may have missed about the specific situation**: <session-context qualifications that Nestor could not have known>
 
-**Atlas's read, given <named session context>**: <own take on Nestor's judgment — agreement, refinement, or disagreement>
+**Session-aware read, given <named context>**: <your own take on Nestor's judgment — agreement, refinement, or disagreement>
 ```
 
-If Atlas has no session context that materially qualifies the judgment, omit the "Atlas's read" section and present Nestor's output cleanly.
+If you have no session context that materially qualifies the judgment, omit the "Session-aware read" section and present Nestor's output cleanly.
 
-Keep the two layers **visible and labeled**. Do not blend Nestor's judgment with Atlas's qualifications into a single unmarked voice. The user should always be able to tell what came from the council and what came from the session-aware partner on top.
+Keep the two layers **visible and labeled**. Do not blend Nestor's judgment with session-context qualifications into a single unmarked voice. The user should always be able to tell what came from the council and what came from the session-aware layer on top.
 
 ## Run metadata logging
 
@@ -169,11 +169,11 @@ After every Nestor consultation, append a metadata record to the current session
   trigger: <explicit phrase that fired, or implicit reason>
   router_decision: <mode + preset + stances>
   router_rule_matched: <rule number from the table>
-  atlas_overrode_router: <true | false; if true, what was overridden and why>
-  atlas_added_qualification: <true | false; if true, what session context shaped the qualification>
+  session_overrode_router: <true | false; if true, what was overridden and why>
+  session_added_qualification: <true | false; if true, what session context shaped the qualification>
 ```
 
-This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Without it, there is no way to tell after ~10 uses whether the router is earning its keep or whether the persona layer adds signal beyond direct `mcp__pal__consensus` calls without the Nestor wrapper. Do not skip the logging step.
+This metadata is load-bearing for kill criteria. Without it, there is no way to tell after ~10 uses whether the router is earning its keep or whether the persona layer adds signal beyond direct `mcp__pal__consensus` calls without the Nestor wrapper. Do not skip the logging step.
 
 ## What NOT to do
 
@@ -182,14 +182,21 @@ This metadata is load-bearing for the kill criteria defined at `~/Obsidian/Atlas
 - **Do NOT deviate from the preset model roster at runtime, even with defensible reasoning.** Observed on Nestor's first real-use run (2026-04-05, run #1): Claude-as-Nestor excluded `claude-haiku-4.5` from the `quick` preset based on a cross-provider correlation-avoidance argument — the reasoning was *"the synthesizer is Claude, so including Claude in the roster correlates errors; cross-provider pair gives more independent signal."* The argument is defensible in design review, but **unauthorised at runtime**. Preset rosters are spec-level decisions; if you have an argument for changing a roster, surface it to the user as a spec discussion, not a runtime override. Runtime deviation breaks reproducibility across runs, makes kill-criteria metrics noisy, and cannot be validated at the moment of deviation — only in design review. If the full preset cannot respond because of infrastructure failure (model unavailable, timeout, parse error), that is the **degraded-run case** in Step 4 — not a license for pre-emptive optimisation.
 - **Do NOT simulate a Nestor personality, voice, or backstory.** Nestor is a function wearing a name, not a character. Respond with structure and discipline, not mannerisms.
 - **Do NOT call Nestor recursively inside a Nestor consultation.** One round, one synthesis. Multi-round debate introduces anchoring bias.
-- **Do NOT blend Nestor's judgment with session-context qualifications silently.** The presentation protocol separation is the only way the user can tell where Nestor's output ends and Atlas's contextual read begins.
+- **Do NOT blend Nestor's judgment with session-context qualifications silently.** The presentation protocol separation is the only way the user can tell where Nestor's output ends and the session-aware commentary begins.
 - **Do NOT claim context-free judgment.** v1 Nestor is fresh-read consultation with reduced bias. Full architectural isolation is a v2 escape hatch (separate sterile synthesis API call), not a v1 guarantee.
-- **Do NOT invoke Nestor when the user explicitly asks for Atlas's own opinion.** If the user says "what do you think?", answer as Atlas directly. Do not deflect to the council.
+- **Do NOT invoke Nestor when the user explicitly asks for your own opinion.** If the user says "what do you think?", answer directly. Do not deflect to the council.
 - **Do NOT persist Nestor-specific state between calls.** Run metadata goes to the current session log only — not to a dedicated Nestor store, not to global memory. Each consultation starts at zero. This statelessness is enforced by the plugin having no storage layer; do not work around it.
 
 ## Kill criteria
 
-v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions (router override rate > 50%, synthesis indistinguishable from direct pal-consensus calls, latency avoidance, cognitive tax) and the full rip-out procedure are documented at `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Rip-out cost is near zero: delete this plugin repo. If deliberation capability is still wanted post-rip-out, the preset rosters and protocol details are preserved in git history (this repo) and `references/` files — they can be re-activated as a standalone skill in `~/Atlas/skills/` without rebuilding from scratch.
+v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions:
+
+- **Router override rate > 50%** — the router is not earning its keep
+- **Synthesis indistinguishable** from direct `mcp__pal__consensus` calls — the persona layer is theatre
+- **Latency avoidance** — users start skipping Nestor because the overhead exceeds the value
+- **Cognitive tax** — the named persona adds mental overhead rather than reducing it
+
+Rip-out cost is near zero: delete the plugin. Preset rosters and protocol details are preserved in git history and `references/` files — they can be re-activated as a standalone skill without rebuilding from scratch.
 
 ## Related
 
@@ -199,7 +206,5 @@ v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions (rout
 - `references/stances-and-gemini-flip.md` — stance semantics + Gemini Flip empirical finding
 - `references/deliberative-stage-2.md` — cross-critique protocol + verbatim prompt template
 
-**Outside this plugin (project-level context):**
-- `~/Obsidian/Atlas/Projects/Nestor/Nestor.md` — project overview with principles, team positioning, kill criteria
-- `~/Obsidian/Atlas/Projects/Nestor/specs/Core Design.md` — full technical spec, open questions, v2 migration paths
-- `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md` — the verified deliberation protocol this whole stack sits on, including the recursive critique run and the Gemini Flip verification transcripts
+**External:**
+- [pal MCP server](https://github.com/BeehiveInnovations/pal-mcp-server) — the multi-model MCP server Nestor depends on

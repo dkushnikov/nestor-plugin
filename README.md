@@ -1,83 +1,121 @@
 # Nestor
 
-The Atlas deliberation counsellor. A named consultation mode that convenes a council of frontier models for high-stakes decisions, exploratory questions, or when a third opinion is needed.
+A Claude Code plugin that convenes a council of frontier AI models for high-stakes decisions, exploratory questions, or when you need a third opinion.
 
-Named after [Nestor of Pylos](https://en.wikipedia.org/wiki/Nestor_(mythology)), the wise counsellor in the *Iliad* who convened councils of kings and synthesised divergent views into a single path forward. That mythological role maps with unusual precision to what this plugin does: **call the council, mediate, synthesise**.
+Named after [Nestor of Pylos](https://en.wikipedia.org/wiki/Nestor_(mythology)), the wise counsellor in the *Iliad* who convened councils of kings and synthesised divergent views into a single path forward: **call the council, mediate, synthesise**.
 
-## What it does
+## When to use
 
-When Atlas (the primary AI partner) delegates a question to Nestor, Nestor:
+- You're making an architectural decision and want to check if three frontier models converge before committing.
+- You wrote a proposal and want it red-teamed from multiple angles simultaneously.
+- You have an open-ended question where you don't know the shape of disagreement.
+- Your session's current answer feels under-calibrated and you want an independent multi-model read.
+- You're choosing between named technical options (library, framework, database) and want structured comparison.
 
-1. Reads Atlas's self-contained question.
-2. Routes it internally — picks a deliberation mode (adversarial red-teaming vs deliberative peer-critique), a model roster, and stance assignments — based on question shape.
-3. **Announces its routing decision** to Atlas before executing, so mis-routing can be caught early.
-4. Runs the council using the underlying `pal` MCP tools (`mcp__pal__consensus` for all modes, plus `mcp__pal__chat` × 3 in parallel for deliberative stage-2 cross-critique).
-5. Synthesises a judgment: leads with the answer, reports where models agreed and diverged, flags any gaps the original question missed.
-6. Returns the judgment in a structured envelope for Atlas to present back to the user.
+Nestor is **not** for simple factual questions, routine implementation decisions, or when you just want Claude's own take.
 
-## Triggers
+## How it works
 
-Nestor activates when Atlas delegates a question, either because the user said so explicitly or because Atlas judged its own answer under-calibrated. Explicit trigger phrases include:
+When you say "ask Nestor", "third opinion", "high stakes", "what does the council think?", or similar, the plugin:
 
-- "Ask Nestor" / "сходи к Нестору" / "go to Nestor"
-- "Третье мнение" / "что думает совет?" / "third opinion"
-- "Прогони через совет"
-- "Глубокий разбор" (triggers deliberative mode specifically)
-- "Важное решение" / "high stakes" / "критично"
-- "Think carefully" / "deliberate"
+1. Formulates a **self-contained question** — strips session context so models reason independently.
+2. **Routes** to the right deliberation mode and model roster based on question shape.
+3. **Announces its routing** before executing, so you can override a mis-route.
+4. **Runs the council** via [pal](https://github.com/BeehiveInnovations/pal-mcp-server) MCP tools.
+5. **Synthesises** a judgment with an explicit agreement map, dissenting views, and unaddressed gaps.
 
-## How Nestor differs from Atlas
+Two modes:
 
-| | Atlas | Nestor |
-|---|---|---|
-| Context | Holds full session memory, project history, conversation state | Fresh read every call — no session memory, no project state |
-| Role | General-purpose partner that makes decisions *with* the user | Counsellor called by Atlas for structured multi-model consultation |
-| Synthesis | Based on session context + user intent | Based on council output + self-contained question (with a known v1 limitation — see below) |
-| Interaction | Synchronous conversation | Explicit delegation by Atlas; single-shot consultation |
+**Adversarial** (red-teaming) — three models with assigned stances (for / against / neutral) attack a specific hypothesis. The router picks this when you have a draft proposal and want it pressure-tested.
 
-The isolation from session momentum is part of why calling Nestor is sometimes more valuable than trusting Atlas's own take on a hard decision.
+**Deliberative** (peer-critique) — three models answer neutrally, then each critiques the other two answers anonymously. The router picks this for open-ended questions, technical decisions, or research questions.
 
-## v1 honest limitations
+## Quick start
 
-This is the **Lite** version (v0.1.0). Documented limitations:
+### 1. Install pal MCP server
 
-1. **In-session synthesis is not architecturally isolated.** The synthesis step is performed by the in-session Claude acting as Nestor, which means the session context is still in attention. Session framing will subtly influence the synthesis. Mitigations: self-contained question discipline, run metadata logging, explicit presentation form ("Nestor says X. My read, given [context]: Y"). v2 escape hatch: separate sterile synthesis API call, deferred until evidence shows it's needed.
-2. **The router is LLM-interpreted, not deterministic code.** The router rules live in SKILL.md and are applied by Claude reading markdown. It will occasionally mis-route on multi-category questions. Mitigation: mandatory pre-execution announcement step so Atlas can catch and override before the council runs. v2 escape hatch: router rewritten as a Python/bash script with regex matching.
-
-See `~/Obsidian/Atlas/Projects/Nestor/` for full design docs, principles (P1–P5), kill criteria, and v2 migration paths.
-
-## Prerequisites
-
-**Requires `pal` MCP server installed and configured separately.** This plugin does NOT bundle `pal`. It assumes `mcp__pal__consensus` and `mcp__pal__chat` tools are available in the Claude Code session.
-
-`pal` also needs an OpenRouter API key to reach the frontier models. See `~/Code/pal-mcp-server` (or the upstream pal project) for installation instructions.
-
-## Installation (local development)
-
-From the Claude Code CLI:
+Nestor requires [pal](https://github.com/BeehiveInnovations/pal-mcp-server) — a multi-model MCP server that talks to frontier models via [OpenRouter](https://openrouter.ai/). You'll need `uvx` installed ([install uv](https://docs.astral.sh/uv/getting-started/installation/)).
 
 ```bash
-/plugin marketplace add ~/Code/nestor-plugin
-/plugin install nestor@nestor-plugin
+# Add pal as an MCP server:
+claude mcp add -s user pal -- uvx --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git" pal-mcp-server
 ```
 
-Exact commands may vary by Claude Code version — check `/plugin help` for the current local-install flow.
+Then set your OpenRouter API key. Either export it in your shell profile:
 
-## Status
+```bash
+export OPENROUTER_API_KEY=sk-or-v1-your-key-here
+```
 
-Experimental (v0.1.0 — 2026-04-05). Kill criteria are defined in `~/Obsidian/Atlas/Projects/Nestor/Nestor.md`. Revisit after ~10 real uses. Rip-out cost is near zero: delete this repo, done.
+Or add it directly to the pal MCP config in `~/.claude.json` under `mcpServers.pal.env`.
 
-## Related
+### 2. Install Nestor
 
-- `plugins/nestor/skills/nestor/references/` — in-plugin progressive-disclosure files with the absorbed deliberation mechanics (preset rosters, pal.consensus workflow, stance semantics with Gemini Flip finding, deliberative stage-2 template)
-- `~/Obsidian/Atlas/Projects/Nestor/` — full design: `Nestor.md`, `Current State.md`, `specs/Core Design.md`
-- `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md` — the verified deliberation protocol Nestor uses under the hood
-- `~/Code/mnemon-plugin` — sibling plugin (the knowledge-library persona of the Atlas team)
-- `~/Code/pal-mcp-server` — the MCP server Nestor depends on
+```bash
+claude plugin marketplace add <path-to-nestor-plugin>
+claude plugin install nestor@nestor-plugin
+```
 
-## History note
+### 3. Verify
 
-This plugin absorbed the content of the previously-standalone `ai-council` skill at `~/Atlas/skills/ai-council/SKILL.md` on 2026-04-05. The ai-council skill was retired (Atlas commit `8f5bf59`) and its deliberation mechanics were moved into this plugin's `references/` directory as progressive-disclosure files. Consolidation was driven by a usability review — two overlapping skills didn't earn their coexistence. The rip-out path is preserved in git history of both repos.
+Start a Claude Code session and type:
+
+> Ask Nestor — should I rewrite a 3k-line Python CLI to Go if my only pain points are dependency management and single-binary distribution?
+
+If you see a routing announcement followed by a structured judgment with agreement map, the plugin is working.
+
+## Example output
+
+```
+Routing Nestor's consultation:
+  Mode: deliberative
+  Preset: code
+  Stances: all-neutral
+  Rule matched: #2 (technical implementation decision with clear axis)
+
+judgment: Keep Python. Address packaging with PyInstaller or shiv.
+  Rewriting 3k lines of working code for a packaging problem is
+  disproportionate. The pain points are solvable without a language change.
+
+confidence: high — all three models converged on "don't rewrite"
+
+agreement_map:
+  - Converged: rewrite cost exceeds packaging-fix cost at this scale
+  - Converged: single-binary is achievable via PyInstaller/shiv/Nuitka
+  - Diverged: whether to also add pipx as a distribution channel
+    (2/3 yes, 1 said it adds complexity without solving the core issue)
+
+dissenting_view: none (unanimous on "don't rewrite")
+
+unaddressed_gaps:
+  - Cross-platform needs not specified — if Windows is a target,
+    Go's cross-compilation is a stronger argument
+  - Team's Go experience not mentioned — rewrite cost depends on it
+```
+
+## Limitations (honest)
+
+1. **In-session synthesis is not architecturally isolated.** The synthesis step happens in the same Claude session, so session context is still in attention. Mitigations: self-contained question discipline, structured presentation that separates council output from session-aware commentary. A future version could use a separate sterile synthesis call.
+
+2. **The router is LLM-interpreted, not deterministic.** Routing rules live in the skill file as markdown and are applied by Claude reading them. It will occasionally mis-route on ambiguous questions. Mitigation: mandatory pre-execution announcement so you can catch and override before tokens are spent.
+
+## Model presets
+
+Nestor routes questions to one of five model rosters:
+
+| Preset | Used for | Models |
+|--------|----------|--------|
+| `arch` | Red-teaming, exploratory questions | Claude Opus, Gemini Pro, GPT-5 |
+| `code` | Technical decisions | Codex, Gemini Pro, Claude Opus |
+| `research` | Factual/research questions | Perplexity Sonar, Gemini Pro, GPT-5 |
+| `brainstorm` | Creative divergence (explicit only) | Claude Opus, Grok, Llama Maverick |
+| `quick` | Low-stakes sanity checks | Gemini Flash, GPT-mini, Claude Haiku |
+
+Full model IDs and per-vendor fallback chains: [`references/presets.md`](plugins/nestor/skills/nestor/references/presets.md).
+
+## Key empirical finding: the Gemini Flip
+
+During verification, Gemini reversed its position on test questions between `against` and `neutral` stances — at identical 8-9/10 confidence scores in both directions. This proves stance assignment is **roleplay, not belief elicitation**. Consequence: never count votes across stance-assigned runs. Details: [`references/stances-and-gemini-flip.md`](plugins/nestor/skills/nestor/references/stances-and-gemini-flip.md).
 
 ## License
 

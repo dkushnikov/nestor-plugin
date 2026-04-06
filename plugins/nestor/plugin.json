@@ -1,13 +1,13 @@
 {
   "name": "nestor",
   "version": "0.1.0",
-  "description": "Atlas deliberation counsellor. Named consultation mode that convenes a council of frontier models (via pal MCP) for high-stakes decisions, exploratory questions, or when a third opinion is needed. Routes questions to adversarial (red-team) or deliberative (anonymised peer-critique) mode automatically, based on question shape.",
+  "description": "Deliberation counsellor that convenes a council of frontier AI models (via pal MCP) for high-stakes decisions, exploratory questions, or when a third opinion is needed. Routes questions to adversarial (red-team) or deliberative (anonymised peer-critique) mode automatically, based on question shape.",
   "author": {
     "name": "Dmitry Kushnikov",
     "email": "dkushnikov@gmail.com"
   },
-  "homepage": "https://github.com/dkushnikov/nestor",
-  "repository": "https://github.com/dkushnikov/nestor",
+  "homepage": "https://github.com/dkushnikov/nestor-plugin",
+  "repository": "https://github.com/dkushnikov/nestor-plugin",
   "license": "MIT",
   "keywords": [
     "deliberation",
@@ -15,6 +15,6 @@
     "council",
     "multi-model",
     "decision-support",
-    "atlas-team"
+    "openrouter"
   ]
 }

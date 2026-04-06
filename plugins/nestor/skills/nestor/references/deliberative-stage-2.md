@@ -49,7 +49,7 @@ The rigid "one concrete strength / one concrete flaw / one missing consideration
 ## Anti-patterns in stage 2
 
 - **No ranking parse.** Prose critiques only. At N=3 peers, ordinal aggregation is statistical theatre — each peer reviews only two others, so any aggregation is too thin to be a meaningful signal. Do not attempt to rank the stage-1 answers based on stage-2 critiques.
-- **No chairman model.** Claude-in-session (acting as Nestor) is the synthesiser. External synthesis via a separate "chairman" model loses the session-awareness that Atlas then layers on top of Nestor's output.
+- **No chairman model.** Claude-in-session (acting as Nestor) is the synthesiser. External synthesis via a separate "chairman" model loses the session-awareness that the calling session then layers on top of Nestor's output.
 - **No iterative debate.** One stage 2 round only. Multi-round debate introduces anchoring bias as models converge on shared framings rather than their independent reads.
 - **No stances in stage 2.** All three critique calls run under each model's default voice — not with `for` or `against` stance prompts. The three stage-1 answers were already neutral, and their critiques should also be neutral.
 - **No model identity in stage 2 prompts.** Always label the peer answers as `Response A` / `Response B`. Never reveal that "Response A was written by Gemini". Anonymisation is what prevents peer review from collapsing into provider loyalty or stylistic recognition.
@@ -62,4 +62,4 @@ Claude (acting as Nestor) synthesises from **six inputs**: three stage-1 answers
 
 On a 3/3 unanimous first-round test run during the 2026-04-05 verification of deliberative mode, stage 2 peer critique caught **four major unaddressed requirements and two factual errors** in the initial answers that unanimity had hidden. That result is the operational justification for running stage 2 even when stage 1 is unanimous — and for making stage 2 unconditional rather than conditional on stage-1 disagreement.
 
-Full verification transcripts: `~/Obsidian/Atlas/Thinking/AI Council — Deliberative Mode Spec.md`.
+This finding was established during the 2026-04-05 A/B verification of deliberative mode, comparing stage-1-only vs stage-1+2 outputs on the same questions.
