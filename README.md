@@ -117,6 +117,14 @@ Full model IDs and per-vendor fallback chains: [`references/presets.md`](plugins
 
 During verification, Gemini reversed its position on test questions between `against` and `neutral` stances — at identical 8-9/10 confidence scores in both directions. This proves stance assignment is **roleplay, not belief elicitation**. Consequence: never count votes across stance-assigned runs. Details: [`references/stances-and-gemini-flip.md`](plugins/nestor/skills/nestor/references/stances-and-gemini-flip.md).
 
+## Acknowledgments
+
+Nestor stands on the shoulders of:
+
+- **[pal MCP server](https://github.com/BeehiveInnovations/pal-mcp-server)** by BeehiveInnovations — the multi-model gateway that powers all cross-model deliberation under the hood.
+- **[council-skill](https://github.com/mikedyan/council-skill)** by Mike Yan — the original multi-model council concept for Claude Code that started this rabbit hole.
+- **[llm-council](https://github.com/karpathy/llm-council)** by Andrej Karpathy — the anonymized peer-review protocol that inspired Nestor's Stage 2 deliberative mode.
+
 ## License
 
 MIT
