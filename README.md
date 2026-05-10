@@ -105,11 +105,11 @@ Nestor routes questions to one of five model rosters:
 
 | Preset | Used for | Models |
 |--------|----------|--------|
-| `arch` | Red-teaming, exploratory questions | Claude Opus, Gemini Pro, GPT-5 |
+| `arch` | Red-teaming, exploratory questions | Claude Opus, Gemini Pro, GPT-5 Pro |
 | `code` | Technical decisions | Codex, Gemini Pro, Claude Opus |
-| `research` | Factual/research questions | Perplexity Sonar, Gemini Pro, GPT-5 |
-| `brainstorm` | Creative divergence (explicit only) | Claude Opus, Grok, Llama Maverick |
-| `quick` | Low-stakes sanity checks | Gemini Flash, GPT-mini, Claude Haiku |
+| `research` | Factual/research questions | Perplexity Sonar, Gemini Pro, GPT-5 Pro |
+| `brainstorm` | Creative divergence (explicit only) | DeepSeek, Grok, Llama Maverick |
+| `quick` | Low-stakes sanity checks | Gemini Flash, GPT-mini, DeepSeek Flash |
 
 Full model IDs and per-vendor fallback chains: [`references/presets.md`](plugins/nestor/skills/nestor/references/presets.md).
 
