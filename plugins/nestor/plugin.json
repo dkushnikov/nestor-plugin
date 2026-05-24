@@ -1,6 +1,6 @@
 {
   "name": "nestor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Deliberation counsellor that convenes a council of frontier AI models (via pal MCP) for high-stakes decisions, exploratory questions, or when a third opinion is needed. Routes questions to adversarial (red-team) or deliberative (anonymised peer-critique) mode automatically, based on question shape.",
   "author": {
     "name": "Dmitry Kushnikov",

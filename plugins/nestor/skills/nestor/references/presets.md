@@ -2,7 +2,7 @@
 
 Defines the five model rosters Nestor uses when routing a consultation. The `arch` / `code` / `research` / `brainstorm` / `quick` presets map to distinct frontier-model combinations optimised for different question shapes. Nestor's router selects the preset; this file defines what each preset actually contains.
 
-Last refreshed: 2026-05-10 — see history note at bottom.
+Last refreshed: 2026-05-24 — see history note at bottom.
 
 ## Preset table
 
@@ -12,7 +12,7 @@ Last refreshed: 2026-05-10 — see history note at bottom.
 | `code` | Router rule 2 (technical decision with clear axis) | `openai/gpt-5.3-codex`, `google/gemini-3.1-pro-preview`, `anthropic/claude-opus-4.7` | Code-specialised model + two general reasoners for design-level tradeoffs |
 | `research` | Router rule 3 (factual / research) | `perplexity/sonar-deep-research`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.5-pro` | Perplexity for web grounding, plus two top-tier reasoners for interpretation |
 | `brainstorm` | Not routed to by default; user must specify explicitly | `deepseek/deepseek-v4-pro`, `x-ai/grok-4.20`, `meta-llama/llama-4-maverick` | Maximally divergent vendor mix — Chinese MoE + xAI + Meta open-source. No Western-frontier-lab member, by design. The synthesizer (Claude) supplies the Anthropic perspective on top |
-| `quick` | Router rule 5 (low-stakes sanity check) | `google/gemini-2.5-flash`, `openai/gpt-5.4-mini`, `deepseek/deepseek-v4-flash` | Three cheap-tier models, three different vendors, none correlated with the Anthropic synthesizer |
+| `quick` | Router rule 5 (low-stakes sanity check) | `google/gemini-3.1-flash-lite`, `openai/gpt-5.4-mini`, `deepseek/deepseek-v4-flash` | Three cheap-tier models, three different vendors, none correlated with the Anthropic synthesizer |
 
 **Critical**: always use the full OpenRouter model IDs (e.g., `anthropic/claude-opus-4.7`), never short aliases like `opus`. The pal tool's built-in alias registry may not match these IDs, causing 404 errors.
 
@@ -21,7 +21,7 @@ Last refreshed: 2026-05-10 — see history note at bottom.
 If a model returns 404 or an error during a consensus run, substitute from the **same vendor** to preserve cross-provider diversity:
 
 - **Anthropic**: `claude-opus-4.7` → `claude-opus-4.6` → `claude-opus-4.5`
-- **Google**: `gemini-3.1-pro-preview` → `gemini-2.5-pro` → `gemini-2.5-flash`
+- **Google**: `gemini-3.1-pro-preview` → `gemini-3.5-flash` → `gemini-3.1-flash-lite`
 - **OpenAI** (general): `gpt-5.5-pro` → `gpt-5.5` → `gpt-5.4`
 - **OpenAI** (codex slot, `code` preset only): `gpt-5.3-codex` → `gpt-5.5` → `gpt-5.4` — no current 5.x codex variant beyond 5.3, so general-tier fallback is used
 - **OpenAI** (mini slot, `quick` preset only): `gpt-5.4-mini` only — no in-vendor cheap-tier fallback at present; treat slot loss as degraded run
@@ -51,6 +51,10 @@ If the full preset cannot respond because of infrastructure failure (model unava
 
 ## Refresh history
 
+- **2026-05-24** — Google generational refresh + redeploy. The 2026-05-10 v0.2.0 refresh had never been deployed (source was v0.2.0, installed cache was still v0.1.0); this pass corrects the drift and reinstalls. Gemini 3.5 Flash (GA 2026-05-19) and Gemini 3.1 Flash-Lite (GA 2026-05-07) both postdate v0.2.0:
+  - `quick`: Google slot `gemini-2.5-flash` → `gemini-3.1-flash-lite` (current cheap/efficiency tier).
+  - Google fallback chain refreshed to current generation — `gemini-3.1-pro-preview` → `gemini-3.5-flash` → `gemini-3.1-flash-lite`; purged stale `gemini-2.5-pro` / `gemini-2.5-flash`.
+  - `arch` / `code` / `research` / `brainstorm` unchanged — all rosters verified current against OpenRouter on 2026-05-24.
 - **2026-05-10** — model refresh against `pal listmodels`. Major changes:
   - Anthropic: `opus-4.6` → `opus-4.7` everywhere it appeared.
   - OpenAI: `gpt-5.4` → `gpt-5.5-pro` in `arch` and `research`. `gpt-5.3-codex` retained in `code` (no newer codex variant).
