@@ -2,44 +2,50 @@
 
 Defines the five model rosters Nestor uses when routing a consultation. The `arch` / `code` / `research` / `brainstorm` / `quick` presets map to distinct frontier-model combinations optimised for different question shapes. Nestor's router selects the preset; this file defines what each preset actually contains.
 
-Last refreshed: 2026-05-24 — see history note at bottom.
+Last refreshed: 2026-07-29 — see history note at bottom.
 
 ## Preset table
 
 | Preset | Routed to by | Models (use full OpenRouter IDs) | Rationale |
 |---|---|---|---|
-| `arch` | Router rule 1 (red-team) and rule 4 (exploratory) | `anthropic/claude-opus-4.7`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.5-pro` | Three frontier reasoners from the three major Western labs — max diversity on complex decisions while keeping Western-RLHF baseline |
-| `code` | Router rule 2 (technical decision with clear axis) | `openai/gpt-5.3-codex`, `google/gemini-3.1-pro-preview`, `anthropic/claude-opus-4.7` | Code-specialised model + two general reasoners for design-level tradeoffs |
-| `research` | Router rule 3 (factual / research) | `perplexity/sonar-deep-research`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.5-pro` | Perplexity for web grounding, plus two top-tier reasoners for interpretation |
-| `brainstorm` | Not routed to by default; user must specify explicitly | `deepseek/deepseek-v4-pro`, `x-ai/grok-4.20`, `meta-llama/llama-4-maverick` | Maximally divergent vendor mix — Chinese MoE + xAI + Meta open-source. No Western-frontier-lab member, by design. The synthesizer (Claude) supplies the Anthropic perspective on top |
-| `quick` | Router rule 5 (low-stakes sanity check) | `google/gemini-3.1-flash-lite`, `openai/gpt-5.4-mini`, `deepseek/deepseek-v4-flash` | Three cheap-tier models, three different vendors, none correlated with the Anthropic synthesizer |
+| `arch` | Router rule 1 (red-team) and rule 4 (exploratory) | `openai/gpt-5.6-sol-pro`, `google/gemini-3.1-pro-preview`, `moonshotai/kimi-k3` | Three frontier reasoners from three distinct training lineages (OpenAI, Google, Moonshot), none from the synthesizer's lab — the Claude chair supplies the Anthropic perspective on top. Composition minimises correlated error with the chair (see Composition principle) |
+| `code` | Router rule 2 (technical decision with clear axis) | `openai/gpt-5.6-sol`, `google/gemini-3.1-pro-preview`, `moonshotai/kimi-k3` | OpenAI's current coding flagship + Google frontier reasoner + strongest open-weight coder (K3: #1 Arena Frontend Code, Terminal-Bench 88.3). The Claude coding perspective is already in the room — the calling session runs Claude Code |
+| `research` | Router rule 3 (factual / research) | `perplexity/sonar-deep-research`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.6-sol-pro` | Perplexity for web grounding, plus two top-tier reasoners for interpretation |
+| `brainstorm` | Not routed to by default; user must specify explicitly | `deepseek/deepseek-v4-pro`, `x-ai/grok-4.5`, `qwen/qwen3.7-max` | Maximally divergent vendor mix — two Chinese labs with different training cultures (DeepSeek MoE + Alibaba agent-centric) + SpaceXAI. No big-three Western lab member, by design. The synthesizer (Claude) supplies the Anthropic perspective on top |
+| `quick` | Router rule 5 (low-stakes sanity check) | `google/gemini-3.5-flash-lite`, `openai/gpt-5.6-luna`, `deepseek/deepseek-v4-flash` | Three cheap-tier models, three different vendors, none correlated with the Anthropic synthesizer |
 
-**Critical**: always use the full OpenRouter model IDs (e.g., `anthropic/claude-opus-4.7`), never short aliases like `opus`. The pal tool's built-in alias registry may not match these IDs, causing 404 errors.
+**Critical**: always use the full OpenRouter model IDs (e.g., `moonshotai/kimi-k3`), never short aliases like `kimi`. The pal tool's built-in alias registry is frozen at Dec 2025 and will not match these IDs, causing 404s or silent resolution to stale models.
+
+## Composition principle
+
+Two rules govern roster membership, in priority order:
+
+1. **No synthesizer-family models.** The chair/synthesizer is a Claude (Fable 5 / Opus-class session). Anthropic models are excluded from every roster: the chair already contributes that perspective during synthesis, and a same-lab member maximises correlated error exactly where the council must be independent — pressure-testing hypotheses the Claude session itself built. This extends the 2026-05-10 design-review decision (which removed Anthropic from `brainstorm`/`quick`) to all presets.
+2. **Compose by co-failure, not by headcount.** Ensemble gain tracks *low pairwise error overlap*, not member count or nominal diversity (arXiv 2607.20768: majority voting beat the strongest member in only ~10% of 3-model subsets; the only robust predictor of gain was low error overlap. arXiv 2606.27288: ensembles are capped by the simultaneous-failure rate, which naive estimates undercount ~2.5×). Prefer a slightly-weaker member from a distinct training lineage over a stronger one that fails together with the chair.
+
+**Rollback condition** (falsifiable, per kill-criteria discipline): if over ~10 `arch`/`code` runs the council visibly misses failure modes an Anthropic member would have caught, or the degraded-run rate spikes on the new members, restore `anthropic/claude-opus-5` to `arch` — as a design-review decision, logged in the refresh history.
 
 ## Fallback chains per vendor
 
 If a model returns 404 or an error during a consensus run, substitute from the **same vendor** to preserve cross-provider diversity:
 
-- **Anthropic**: `claude-opus-4.7` → `claude-opus-4.6` → `claude-opus-4.5`
-- **Google**: `gemini-3.1-pro-preview` → `gemini-3.5-flash` → `gemini-3.1-flash-lite`
-- **OpenAI** (general): `gpt-5.5-pro` → `gpt-5.5` → `gpt-5.4`
-- **OpenAI** (codex slot, `code` preset only): `gpt-5.3-codex` → `gpt-5.5` → `gpt-5.4` — no current 5.x codex variant beyond 5.3, so general-tier fallback is used
-- **OpenAI** (mini slot, `quick` preset only): `gpt-5.4-mini` only — no in-vendor cheap-tier fallback at present; treat slot loss as degraded run
-- **DeepSeek**: `deepseek-v4-pro` → `deepseek-v4-flash` → `deepseek-r1-0528`
+- **OpenAI** (reasoning slots, `arch` / `research`): `gpt-5.6-sol-pro` → `gpt-5.6-sol` → `gpt-5.5`
+- **OpenAI** (code slot, `code` preset only): `gpt-5.6-sol` → `gpt-5.3-codex` → `gpt-5.5` — codex kept as deliberate code-specialist fallback
+- **OpenAI** (quick slot): `gpt-5.6-luna` → `gpt-5.4-mini`
+- **Google**: `gemini-3.1-pro-preview` → `gemini-3.6-flash` → `gemini-3.5-flash-lite`; in `quick`, `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite`
+- **Moonshot**: `kimi-k3` → `kimi-k2.6` → `kimi-k2.5`; in `code`, prefer `kimi-k2.7-code` as the first fallback
+- **DeepSeek**: `deepseek-v4-pro` → `deepseek-v4-flash` → `deepseek-v3.2`
+- **Qwen**: `qwen3.7-max` → `qwen3.7-plus` → `qwen3.6-max-preview`
+- **xAI**: `grok-4.5` → `grok-4.3` → `grok-4.20` — singleton status resolved 2026-07 (three live generations)
 - **Perplexity** (`research` preset only): `sonar-deep-research` → `sonar-pro-search`
-- **xAI**: `grok-4.20` only — **no in-vendor fallback** (grok-4.1-fast retired). On failure, declare degraded run rather than cross-vendor swap. See "Vendor singletons" below.
-- **Meta-Llama**: `llama-4-maverick` only — **no in-vendor fallback**. Same handling as xAI.
 
 Report the substitution to the user — do not silently swap vendors. Vendor diversity is what the preset provides; a silent cross-vendor swap breaks that.
 
-### Vendor singletons (xAI, Meta-Llama)
+Removed vendors: **Anthropic** (no roster slots remain — the chair supplies the perspective; see Composition principle), **Meta** (no current open frontier: `llama-4-maverick` is 15 months stale, Muse Spark is proprietary, US-only and waitlisted).
 
-Two slots have no in-vendor fallback: the xAI slot in `brainstorm` and the Meta-Llama slot in `brainstorm`. If either fails:
+### Vendor singletons
 
-1. Do **not** silently swap to a different vendor. The whole point of `brainstorm` is the divergent vendor mix.
-2. Report the failure to the user explicitly.
-3. Proceed with the remaining two models and flag in the return envelope's `confidence` field — e.g., `"medium, caveat: only 2/3 brainstorm models responded; xAI grok-4.20 returned 404"`.
-4. If the user wants a third model anyway, they can explicitly request a cross-vendor swap as an override, which becomes a session decision logged in run metadata.
+None in the current rosters — every vendor slot has an in-vendor fallback chain (Perplexity's is two-deep). If an entire vendor chain is exhausted during a run, that is the **degraded-run case**: do not cross-vendor swap; proceed with the remaining models and flag the roster degradation in the return envelope's `confidence` field per Nestor SKILL.md Step 4.
 
 ## Presets are authoritative at runtime
 
@@ -51,6 +57,14 @@ If the full preset cannot respond because of infrastructure failure (model unava
 
 ## Refresh history
 
+- **2026-07-29** — full generational refresh + composition change (v0.3.0). Context: the synthesizer is now Claude Fable 5, and Chinese open-weights reached the frontier (Kimi K3: #3 GDPval-AA Elo behind only Fable 5 and GPT-5.6 Sol, above Fable 5 on Terminal-Bench 2.1, #1 Arena Frontend Code; Chinese models ≈46% of OpenRouter tokens vs ~4.5% a year earlier).
+  - **Anthropic removed from `arch`/`code`** (was `claude-opus-4.7`) → `moonshotai/kimi-k3` enters both. Completes the synthesizer-decorrelation that the 2026-05-10 review started with `brainstorm`/`quick`. Counterargument considered honestly: Opus 5 (released 2026-07-24, ≈Fable-level) is likely stronger than K3 in raw capability, and a cold Anthropic read is not identical to the session-contaminated chair — but the marginal value of a council member is the *independent* signal it adds to a room that already contains a Claude chair, and co-failure evidence (see Composition principle) says the decorrelated member wins. Rollback condition documented above.
+  - OpenAI: `gpt-5.5-pro` → `gpt-5.6-sol-pro` in `arch`/`research` (GPT-5.6 family released 2026-07-09; Sol Pro is the reasoning flagship at $5/$30 vs 5.5-pro's $30/$180 — 6× cheaper). `code` slot `gpt-5.3-codex` → `gpt-5.6-sol` (OpenAI positions Sol as its best coding model; no newer codex-branded variant exists — codex kept as first fallback). `quick`: `gpt-5.4-mini` → `gpt-5.6-luna` (newer generation, cheaper).
+  - xAI: `grok-4.20` → `grok-4.5` (2026-07-08, #4 on AA Intelligence Index, ~3.8× more token-efficient). Vendor singleton resolved — chain now three-deep. Corporate note: xAI acquired by SpaceX (rebranded SpaceXAI 2026-07); `x-ai/` prefix unchanged on OpenRouter.
+  - **Meta removed** — `llama-4-maverick` (2025-04) has no successor; Muse Spark 1.1 is proprietary/US-only/waitlisted. `qwen/qwen3.7-max` (Alibaba flagship, 2026-05-21) takes the brainstorm slot; brainstorm mix is now DeepSeek + SpaceXAI + Alibaba.
+  - Google: pro tier **unchanged** — Gemini 3.5 Pro still unreleased (delayed past June over coding performance), `gemini-3.1-pro-preview` remains Google's top text model. `quick` slot `gemini-3.1-flash-lite` → `gemini-3.5-flash-lite` (2026-07-21); fallback chain refreshed to `gemini-3.6-flash` era.
+  - Perplexity unchanged — `sonar-deep-research` still the deep-research specialist; `sonar-pro-search` (agentic interactive search) as fallback.
+  - All primary-roster and fallback IDs verified against the OpenRouter models API on 2026-07-29.
 - **2026-05-24** — Google generational refresh + redeploy. The 2026-05-10 v0.2.0 refresh had never been deployed (source was v0.2.0, installed cache was still v0.1.0); this pass corrects the drift and reinstalls. Gemini 3.5 Flash (GA 2026-05-19) and Gemini 3.1 Flash-Lite (GA 2026-05-07) both postdate v0.2.0:
   - `quick`: Google slot `gemini-2.5-flash` → `gemini-3.1-flash-lite` (current cheap/efficiency tier).
   - Google fallback chain refreshed to current generation — `gemini-3.1-pro-preview` → `gemini-3.5-flash` → `gemini-3.1-flash-lite`; purged stale `gemini-2.5-pro` / `gemini-2.5-flash`.
