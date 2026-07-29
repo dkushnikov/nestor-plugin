@@ -19,6 +19,8 @@ After collecting the three neutral stage-1 answers, run **three parallel `mcp__p
 
 The three calls run in parallel, not sequentially, because they are independent of each other — each reviewer reads the same two peer answers, and no reviewer's critique affects any other's.
 
+**Randomise answer order per critic.** Decide independently for each of the three calls which peer answer becomes `Response A` and which becomes `Response B` (e.g., alternate or shuffle — any per-call variation works; do not reuse one fixed order). Ordering anchors are real and persist through deliberation: models systematically over-weight the first-presented answer even when instructed to weigh content only (arXiv 2606.19494, "Hidden Anchors", Jun 2026). Anonymisation removes identity bias; per-critic order randomisation removes position bias. Both are required.
+
 Note: `mcp__pal__chat` is used **only** for stage 2 cross-critique calls. It is never used as a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
 
 ## Critique prompt template
@@ -57,6 +59,12 @@ The rigid "one concrete strength / one concrete flaw / one missing consideration
 ## Synthesis after stage 2
 
 Claude (acting as Nestor) synthesises from **six inputs**: three stage-1 answers plus three stage-2 critiques. Lead the synthesis with the judgment itself, then explicitly call out where the critiques **converged on shared weaknesses** in the stage-1 answers — that convergent critique is the strongest meta-signal deliberative mode produces.
+
+**On a 2-1 split, the majority is not the verdict.** Frontier models share training data, so their errors correlate — in roughly one of four divergent cases the minority position is the correct one (arXiv 2606.29270, "Minority Sentinel", Jun 2026). When stage 1 + stage 2 leave a genuine split:
+
+1. Extract the **crux claim** — the specific factual or logical point the sides actually diverge on, not the surface conclusion.
+2. For high-stakes questions, run **one grounded verification pass on the crux** (evidence lookup, file read, logic re-derivation) before synthesising. Verify with evidence, not with another model's opinion — the same research found that re-judging a split with an additional LLM has *negative* net gain, while evidence-grounded checks flip verdicts with high precision.
+3. Whatever the outcome, carry the dissent into the return envelope's `dissenting_view` with its reasoning intact. A synthesised middle position that erases the split is worse than an honest fork.
 
 ## Empirical evidence for stage 2 value
 
