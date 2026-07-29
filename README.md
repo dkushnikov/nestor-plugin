@@ -36,11 +36,11 @@ Two modes:
 
 Nestor requires [pal](https://github.com/BeehiveInnovations/pal-mcp-server) — a multi-model MCP server that talks to frontier models via [OpenRouter](https://openrouter.ai/). You'll need `uvx` installed ([install uv](https://docs.astral.sh/uv/getting-started/installation/)).
 
-> **Note (2026-07):** upstream pal is dormant — no releases or commits since v9.8.2 (2025-12-15). It still works, but pin the version instead of tracking HEAD, and supply current model IDs via `OPENROUTER_MODELS_CONFIG_PATH` (pal's built-in registry is frozen at Dec 2025; Nestor's presets always pass full OpenRouter IDs, which bypass the stale registry).
+> **Note (2026-07):** upstream pal is dormant — no releases or commits since v9.8.2 (2025-12-15). Two consequences: (1) pin the version instead of tracking HEAD; (2) **constrain the `mcp` SDK to `<2`** — pal uses the old low-level `Server` API, and with an unconstrained resolve the 2026 `mcp` SDK crashes it at import (`AttributeError: 'Server' object has no attribute 'list_tools'`). Supply current model IDs via `OPENROUTER_MODELS_CONFIG_PATH` (pal's built-in registry is frozen at Dec 2025; Nestor's presets always pass full OpenRouter IDs, which bypass the stale registry).
 
 ```bash
-# Add pal as an MCP server (pinned to the last release):
-claude mcp add -s user pal -- uvx --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
+# Add pal as an MCP server (pinned release + compatible mcp SDK):
+claude mcp add -s user pal -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
 ```
 
 Then set your OpenRouter API key. Either export it in your shell profile:
