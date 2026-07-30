@@ -17,9 +17,9 @@ Stage 2 runs **unconditionally in deliberative mode**, including when the three 
 
 After collecting the three neutral stage-1 answers, run **three parallel `mcp__pal__chat` calls**. Each call sends one council member the other two answers, labelled only as `Response A` and `Response B` (model identity hidden from the reviewer), with the critique prompt template below.
 
-The three calls run in parallel, not sequentially, because they are independent of each other — each reviewer reads the same two peer answers, and no reviewer's critique affects any other's.
+The three calls are independent of each other — each reviewer receives a fixed input (the two *other* members' answers; each critic therefore sees a different pair) and no reviewer's critique affects any other's. **Issue all three `mcp__pal__chat` calls in a single assistant message** (the host supports parallel tool calls in one block) — that is the concrete parallelism mechanism. If the host executes them sequentially anyway, the result is still valid — independence comes from the fixed inputs and anonymisation, not from timing — but the added latency counts against the latency kill criterion, so note sequential execution in the run metadata.
 
-**Randomise answer order per critic.** Decide independently for each of the three calls which peer answer becomes `Response A` and which becomes `Response B` (e.g., alternate or shuffle — any per-call variation works; do not reuse one fixed order). Ordering anchors are real and persist through deliberation: models systematically over-weight the first-presented answer even when instructed to weigh content only (arXiv 2606.19494, "Hidden Anchors", Jun 2026). Anonymisation removes identity bias; per-critic order randomisation removes position bias. Both are required.
+**Balance answer order across critics.** Each stage-1 answer appears in exactly two critique prompts; assign `Response A` / `Response B` so that **each answer appears once as A and once as B** across the three calls (a cyclic rotation gives this automatically; use randomness only to pick which of the two valid rotations). Do not reuse one fixed roster ordering for all critics — ordering anchors are real and persist through deliberation: models systematically over-weight the first-presented answer even when instructed to weigh content only (arXiv 2606.19494, "Hidden Anchors", Jun 2026). Anonymisation removes identity bias; balanced order rotation removes position bias. Both are required.
 
 Note: `mcp__pal__chat` is used **only** for stage 2 cross-critique calls. It is never used as a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
 
@@ -47,6 +47,15 @@ Use this template verbatim for every stage 2 call. Substitute the original quest
     Do not rank. Do not summarise. Be specific — point at claims, not at prose style.
 
 The rigid "one concrete strength / one concrete flaw / one missing consideration" structure is deliberate — it is the **anti-shallowness constraint**. Without it, models default to polite summary and lose signal.
+
+## Stage-2 degraded handling
+
+Stage 2 uses `mcp__pal__chat`, so the consensus-run degraded handling in SKILL.md Step 4 does not cover it directly. Rules:
+
+- **A critic call fails or returns unusable output** (error, empty content, off-topic): retry once with that critic's same-vendor fallback from `presets.md`. If the retry also fails, proceed without that critique.
+- **Reasoning models need output headroom.** Several roster models (Kimi K3, the Sol family) spend tokens on reasoning before emitting content; a tight output cap yields an empty `content` with the budget consumed. Do not set restrictive output limits on stage-2 calls, and treat empty-content-with-usage as a failed call (retry per above), not as a null critique.
+- **Proceed with 2/3 critiques**, flagging `stage2: partial (2/3)` in run metadata and the degradation in the return envelope's `confidence`.
+- **With 0 or 1 critiques, do not synthesise as deliberative.** Present the stage-1 answers with a stage-1-only label and the failure reported honestly — a single critique masquerading as peer review is worse than visibly skipping stage 2.
 
 ## Anti-patterns in stage 2
 

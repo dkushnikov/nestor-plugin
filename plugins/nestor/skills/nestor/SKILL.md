@@ -36,7 +36,7 @@ Invoke this skill when:
 
 ## Prerequisites
 
-Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Surface this actionable message to the user: *"`pal` MCP server is not available in this session. Install it from [github.com/BeehiveInnovations/pal-mcp-server](https://github.com/BeehiveInnovations/pal-mcp-server). Nestor cannot run without it."*
+Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Surface this actionable message to the user: *"`pal` MCP server is not available in this session. Install it **pinned** — upstream is dormant and an unconstrained resolve crashes at import: `claude mcp add -s user pal -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server` — then set `OPENROUTER_API_KEY` and `OPENROUTER_MODELS_CONFIG_PATH` in its env (pal's built-in model registry is frozen at Dec 2025), and verify with `claude mcp list`. Nestor cannot run without it."*
 
 ## Core protocol
 
@@ -108,10 +108,11 @@ Use the presentation protocol below. Lead with Nestor's judgment. Add your own s
 
 ## The router
 
-Match rules in order. First match wins. Rule 6 is the safe fallback when nothing else applies.
+Match rules in order. First match wins. Rule 0 honors explicit user requests before any shape-based rule; rule 6 is the safe fallback when nothing else applies.
 
 | # | Condition | Mode | Preset | Stances |
 |---|---|---|---|---|
+| 0 | Explicit user override — the user names a preset («Nestor brainstorm: …», "quick check via the quick preset") or a mode («глубокий разбор» → deliberative; "red-team this" → adversarial) | as requested | as requested (if only mode is named, pick preset via rules 1–5) | all-neutral unless the user assigns stances |
 | 1 | Named hypothesis to red-team (user has a draft proposal and explicitly wants it attacked, or `reason_for_consulting` includes "red-team" / "pressure-test") | adversarial | arch | `for` / `against` / `neutral` with `stance_prompt` tuned to the hypothesis |
 | 2 | Technical implementation decision with a clear axis (library, framework, algorithm, database choice between named options) | deliberative | code | all-neutral |
 | 3 | Factual or research question requiring web-grounded verification ("what is true about", "verify", "market data") | deliberative | research | all-neutral |
@@ -169,9 +170,14 @@ After every Nestor consultation, append a metadata record to the current session
   trigger: <explicit phrase that fired, or implicit reason>
   router_decision: <mode + preset + stances>
   router_rule_matched: <rule number from the table>
+  models_used: <the models that actually answered, after any fallback substitutions>
+  degraded: <false | which slot failed and what was substituted or dropped>
+  stage2: <run | partial (N/3 critiques) | skipped-adversarial | n/a>
   session_overrode_router: <true | false; if true, what was overridden and why>
   session_added_qualification: <true | false; if true, what session context shaped the qualification>
 ```
+
+The `models_used` / `degraded` / `stage2` fields exist so the kill criteria and the roster rollback condition are computable from the records themselves — without them, degraded-run rate and fallback frequency are invisible to later analytics.
 
 This metadata is load-bearing for kill criteria. Without it, there is no way to tell after ~10 uses whether the router is earning its keep or whether the persona layer adds signal beyond direct `mcp__pal__consensus` calls without the Nestor wrapper. Do not skip the logging step.
 

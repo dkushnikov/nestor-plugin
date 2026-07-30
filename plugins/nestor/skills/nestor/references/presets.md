@@ -23,21 +23,23 @@ Two rules govern roster membership, in priority order:
 1. **No synthesizer-family models.** The chair/synthesizer is a Claude (Fable 5 / Opus-class session). Anthropic models are excluded from every roster: the chair already contributes that perspective during synthesis, and a same-lab member maximises correlated error exactly where the council must be independent — pressure-testing hypotheses the Claude session itself built. This extends the 2026-05-10 design-review decision (which removed Anthropic from `brainstorm`/`quick`) to all presets.
 2. **Compose by co-failure, not by headcount.** Ensemble gain tracks *low pairwise error overlap*, not member count or nominal diversity (arXiv 2607.20768: majority voting beat the strongest member in only ~10% of 3-model subsets; the only robust predictor of gain was low error overlap. arXiv 2606.27288: ensembles are capped by the simultaneous-failure rate, which naive estimates undercount ~2.5×). Prefer a slightly-weaker member from a distinct training lineage over a stronger one that fails together with the chair.
 
-**Rollback condition** (falsifiable, per kill-criteria discipline): if over ~10 `arch`/`code` runs the council visibly misses failure modes an Anthropic member would have caught, or the degraded-run rate spikes on the new members, restore `anthropic/claude-opus-5` to `arch` — as a design-review decision, logged in the refresh history.
+**Rollback condition** (falsifiable, per kill-criteria discipline): review after ~10 `arch`/`code` runs using the run-metadata records (`models_used` / `degraded` / `stage2` fields make this computable). Triggers: (a) the council repeatedly misses failure modes that session-side review then catches — restore `anthropic/claude-opus-5` to whichever preset(s) the misses occurred in (`arch`, `code`, or both); (b) degraded-run rate on the new members exceeds ~2 of 10 runs — first fix the failing slot via its fallback chain, and only then reconsider composition. Either action is a design-review decision, logged in the refresh history.
 
 ## Fallback chains per vendor
 
 If a model returns 404 or an error during a consensus run, substitute from the **same vendor** to preserve cross-provider diversity:
 
-- **OpenAI** (reasoning slots, `arch` / `research`): `gpt-5.6-sol-pro` → `gpt-5.6-sol` → `gpt-5.5`
-- **OpenAI** (code slot, `code` preset only): `gpt-5.6-sol` → `gpt-5.3-codex` → `gpt-5.5` — codex kept as deliberate code-specialist fallback
-- **OpenAI** (quick slot): `gpt-5.6-luna` → `gpt-5.4-mini`
-- **Google**: `gemini-3.1-pro-preview` → `gemini-3.6-flash` → `gemini-3.5-flash-lite`; in `quick`, `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite`
-- **Moonshot**: `kimi-k3` → `kimi-k2.6` → `kimi-k2.5`; in `code`, prefer `kimi-k2.7-code` as the first fallback
-- **DeepSeek**: `deepseek-v4-pro` → `deepseek-v4-flash` → `deepseek-v3.2`
-- **Qwen**: `qwen3.7-max` → `qwen3.7-plus` → `qwen3.6-max-preview`
-- **xAI**: `grok-4.5` → `grok-4.3` → `grok-4.20` — singleton status resolved 2026-07 (three live generations)
-- **Perplexity** (`research` preset only): `sonar-deep-research` → `sonar-pro-search`
+Chains are written with **full OpenRouter IDs** — the same rule as the preset table; a bare model name passed to pal falls through to its frozen alias registry and 404s or resolves stale.
+
+- **OpenAI** (reasoning slots, `arch` / `research`): `openai/gpt-5.6-sol-pro` → `openai/gpt-5.6-sol` → `openai/gpt-5.5`
+- **OpenAI** (code slot, `code` preset only): `openai/gpt-5.6-sol` → `openai/gpt-5.3-codex` → `openai/gpt-5.5` — codex kept as deliberate code-specialist fallback
+- **OpenAI** (quick slot): `openai/gpt-5.6-luna` → `openai/gpt-5.4-mini`
+- **Google**: `google/gemini-3.1-pro-preview` → `google/gemini-3.6-flash` → `google/gemini-3.5-flash-lite`; in `quick`, `google/gemini-3.5-flash-lite` → `google/gemini-3.1-flash-lite`
+- **Moonshot**: `moonshotai/kimi-k3` → `moonshotai/kimi-k2.6` → `moonshotai/kimi-k2.5`; in `code`, prefer `moonshotai/kimi-k2.7-code` as the first fallback
+- **DeepSeek**: `deepseek/deepseek-v4-pro` → `deepseek/deepseek-v4-flash` → `deepseek/deepseek-v3.2`
+- **Qwen**: `qwen/qwen3.7-max` → `qwen/qwen3.7-plus` → `qwen/qwen3.6-max-preview`
+- **xAI**: `x-ai/grok-4.5` → `x-ai/grok-4.3` → `x-ai/grok-4.20` — singleton status resolved 2026-07 (three live generations)
+- **Perplexity** (`research` preset only): `perplexity/sonar-deep-research` → `perplexity/sonar-pro-search`
 
 Report the substitution to the user — do not silently swap vendors. Vendor diversity is what the preset provides; a silent cross-vendor swap breaks that.
 
