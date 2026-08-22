@@ -53,7 +53,17 @@ Translate the user's situation into a fully self-contained question. Every fact 
 
 The under-specified version leaves the council guessing about the actual tradeoffs; the self-contained version lets it reason about the problem the user actually has.
 
-If the user's situation lacks a required detail, ask the user first rather than guessing. A bad question produces a bad council output; the question-quality gate is the single most important step in the whole protocol.
+Before routing, verify the question against the **question gate** — five checks, each either satisfied or explicitly not applicable:
+
+1. **Self-contained** — every fact the council needs is in the text (as above).
+2. **Estate inventory** — existing systems, specs, tools, and prior decisions that bear on the question are named, or `no applicable estate`. This is the #1 source of post-hoc session corrections: the council cannot know what already exists (52-run retro 2026-08-22: ~20 of 43 session qualifications supplied estate the question omitted).
+3. **Scope bounds** — what is in and out of scope (layers, components, already-settled decisions) is stated. An unbounded round-2 question caused the council to re-attack settled design (2026-06-15).
+4. **Neutral framing** — the question carries the *proposition or artifact under test* plus decision-relevant facts; it never carries the asker's ownership, preference, confidence, or desired verdict. This holds in EVERY mode — adversarial red-team needs the hypothesis, not "I believe X" — and at every stage: initial prompt, stage-2 critique inputs, round-2 state packets, any search queries, the synthesis. Origin: 2026-06-17 sycophancy incident — stage-2 flipped stage-1 answers that had absorbed the asker's stated leaning.
+5. **Privacy pass** — content from privacy-scoped domains travels as an anonymized structural form (no names, no identifying numbers), and the anonymized form must still carry the decision-relevant specifics — over-anonymization that produces generic advice fails the check too. Precedent: 2026-06-07 (company model sent anonymized; findings translated back locally).
+
+If a check fails AND the missing piece would change the routing or materially change the answer, stop and return `needs_clarification` with the specific question (rule 6 shape) instead of running the council. Minor gaps that would not change the outcome are noted, not blocking. A bad question produces a bad council output; this gate is the single most important step in the whole protocol.
+
+**Round-2 consultations** (a follow-up council on the same topic after changes) inherit nothing — the council is stateless. Build the question as a **state packet**: (1) the original neutral question; (2) scope bounds and estate, restated fresh; (3) points settled since round 1, each with its rationale; (4) points still open; (5) what changed — new evidence, revisions made; (6) the delta question for this round. State the reopening rule explicitly: *settled points may be challenged only on new evidence, an internal contradiction, or a material unstated assumption.* The packet stays neutral — never "the user liked answer B" or "we now lean toward X". Without this, round-2 councils re-attack settled points (observed 2026-06-14/15).
 
 ### Step 2 — Route the question
 
@@ -64,7 +74,7 @@ Apply the router decision table below to select four outputs:
 - `stances`: per-model assignment (default all-neutral)
 - `question_framing`: the exact text sent to each council model
 
-For rules 2–5, `question_framing` is simply the self-contained question from Step 1, passed through unchanged. For rule 1 (named hypothesis to red-team), `question_framing` additionally includes a per-model `stance_prompt` tuned to the specific hypothesis — e.g., one model receives "argue for <hypothesis>", another "argue against <hypothesis>", a third "argue from a skeptical neutral stance". The stance-specific framing is what makes adversarial mode sharp; do not pass the raw question to stance-assigned models and expect them to infer the attack angle.
+For rules 2–5, `question_framing` is simply the self-contained question from Step 1, passed through unchanged; for rule-2 artifact reviews, append the review dimensions (correctness, omissions, risks, strengths, recommended changes) so the council reviews against criteria rather than inventing stances. For rule 1 (position red-team), `question_framing` additionally includes a per-model `stance_prompt` tuned to the specific hypothesis — e.g., one model receives "argue for <hypothesis>", another "argue against <hypothesis>", a third "argue from a skeptical neutral stance". The stance prompts carry the *proposition*, never the asker's ownership or preference (question-gate check 4). The distinction that picks between rules 1 and 2: red-team MY POSITION → rule 1 with stances; review THIS ARTIFACT → rule 2, neutral, criteria-based. Sessions previously disambiguated this manually (52-run retro: artifact reviews wobbled between rules 1 and 4); the router now owns it.
 
 Match rules in order; first match wins. If no rule matches with confidence, go to Step 3 with `status: needs_clarification` and return to the user for more context instead of guessing.
 
@@ -113,8 +123,8 @@ Match rules in order. First match wins. Rule 0 honors explicit user requests bef
 | # | Condition | Mode | Preset | Stances |
 |---|---|---|---|---|
 | 0 | Explicit user override — the user names a preset («Nestor brainstorm: …», "quick check via the quick preset") or a mode («глубокий разбор» → deliberative; "red-team this" → adversarial) | as requested | as requested (if only mode is named, pick preset via rules 1–5) | all-neutral unless the user assigns stances |
-| 1 | Named hypothesis to red-team (user has a draft proposal and explicitly wants it attacked, or `reason_for_consulting` includes "red-team" / "pressure-test") | adversarial | arch | `for` / `against` / `neutral` with `stance_prompt` tuned to the hypothesis |
-| 2 | Technical implementation decision with a clear axis (library, framework, algorithm, database choice between named options) | deliberative | code | all-neutral |
+| 1 | Position red-team — the user OWNS a position or hypothesis and wants it attacked ("red-team this", "pressure-test my position") | adversarial | arch | `for` / `against` / `neutral` with `stance_prompt` tuned to the hypothesis; the proposition travels, the asker's ownership and preference do not |
+| 2 | Technical operation on an artifact or options — review a drafted artifact (spec, design doc, API, schema, plan, typology) against requirements and constraints with the author's position withheld, OR compare/select among named technical approaches | deliberative | `code` if the artifact/decision is implementation-bound (spec, API, schema, tooling), else `arch` | all-neutral; for artifact review use review dimensions (correctness, omissions, risks, strengths, recommended changes), not stances |
 | 3 | Factual or research question requiring web-grounded verification ("what is true about", "verify", "market data") | deliberative | research | all-neutral |
 | 4 | Exploratory or open-ended framing ("what am I missing", "what's the right framing", "how should I think about") | deliberative | arch | all-neutral |
 | 5 | Low-stakes sanity check ("quick check", "is this reasonable", "obvious mistakes") | adversarial | quick | all-neutral |
@@ -173,12 +183,15 @@ After every Nestor consultation, append a metadata record to the current session
   models_used: <the models that actually answered, after any fallback substitutions>
   degraded: <false | which slot failed and what was substituted or dropped — write exactly `false` when the run was clean; never append comments after `false` (the analytics sweep parses this field mechanically)>
   stage2: <run | partial (N/3 critiques) | skipped-adversarial | n/a>
+  outcome: <pending | one line: the council's verdict AND what the session/user did with it — recommendation ≠ decision, record both; when a `pending` outcome resolves later in the session, update the record>
   notes: <optional free-text anomalies — background-migrated steps, double answers, retries that succeeded; anything worth recording that is NOT a degradation>
   session_overrode_router: <true | false; if true, what was overridden and why>
   session_added_qualification: <true | false; if true, what session context shaped the qualification>
 ```
 
-The `models_used` / `degraded` / `stage2` fields exist so the kill criteria and the roster rollback condition are computable from the records themselves — without them, degraded-run rate and fallback frequency are invisible to later analytics.
+The `models_used` / `degraded` / `stage2` / `outcome` fields exist so the kill criteria and the roster rollback condition are computable from the records themselves — without them, degraded-run rate, fallback frequency, and recommendation-acceptance are invisible to later analytics.
+
+**Core stays parseable.** The fields above are machine-read by the analytics sweep — fill every one, in the template's `key: value` shape, even when the run was unusual. Rich observations, meta-findings, and stories go into `notes` (or prose OUTSIDE the record) — never replace the structured core with free-form text. The three free-form records of 2026-06-17 carried the thread's most valuable findings and broke the sweep at the same time; the lesson is both/and, not either/or.
 
 This metadata is load-bearing for kill criteria. Without it, there is no way to tell after ~10 uses whether the router is earning its keep or whether the persona layer adds signal beyond direct `mcp__pal__consensus` calls without the Nestor wrapper. Do not skip the logging step.
 
@@ -202,6 +215,12 @@ v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions:
 - **Synthesis indistinguishable** from direct `mcp__pal__consensus` calls — the persona layer is theatre
 - **Latency avoidance** — users start skipping Nestor because the overhead exceeds the value
 - **Cognitive tax** — the named persona adds mental overhead rather than reducing it
+
+Revisit executed 2026-08-22 at 52 runs — no condition fired; deliberative mode and the persona layer kept (decision note in the Atlas vault, Projects/Nestor). Standing cadence from v0.5.0: **review after ~15 runs on the current spec version**, checking three falsifiable metrics against the retro baseline:
+
+- **estate-driven qualification rate** (share of `session_added_qualification` entries that supply estate the question omitted; baseline ~20/43) — should FALL with the question gate;
+- **manual preset-override rate** (baseline: every code-preset run reached via override, rule 2 fired 0/52) — should FALL with the operation-shaped router;
+- **`outcome` fill rate** (baseline 13/52) — should RISE with the lifecycle field.
 
 Rip-out cost is near zero: delete the plugin. Preset rosters and protocol details are preserved in git history and `references/` files — they can be re-activated as a standalone skill without rebuilding from scratch.
 

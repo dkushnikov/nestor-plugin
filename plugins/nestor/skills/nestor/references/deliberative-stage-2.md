@@ -59,6 +59,18 @@ Stage 2 uses `mcp__pal__chat`, so the consensus-run degraded handling in SKILL.m
 - **Proceed with 2/3 critiques**, flagging `stage2: partial (2/3)` in run metadata and the degradation in the return envelope's `confidence`.
 - **With 0 or 1 critiques, do not synthesise as deliberative.** Present the stage-1 answers with a stage-1-only label and the failure reported honestly — a single critique masquerading as peer review is worse than visibly skipping stage 2.
 
+## Research-mode stage 2: claim-level grounding
+
+Rule-3 (research preset) runs break the peer-critique assumption for freshness: every council member shares a training cutoff, so peers cannot catch stale facts (observed and adapted in the field 2026-06-07; codified v0.5.0). For research runs, stage 2 is a **conditional grounding pass layered onto critique — not a wholesale replacement**:
+
+1. Extract the crux claims from the stage-1 answers.
+2. Classify each claim: freshness-sensitive · externally verifiable · internally reasoned · normative.
+3. Web-verify ONLY the freshness-sensitive and externally-verifiable claims. Report each honestly: verified / contradicted / mixed / not-found — never force a verification that the sources do not support, and check that a source actually entails the claim, not merely mentions the topic.
+4. Internally-reasoned and normative claims keep peer critique — grounding cannot check inference quality or judgment.
+5. Record in run metadata (`notes`) which path each crux took.
+
+Search queries inherit the same neutrality rule as every other stage: no asker leaning, no desired verdict baked into the query.
+
 ## Anti-patterns in stage 2
 
 - **No ranking parse.** Prose critiques only. At N=3 peers, ordinal aggregation is statistical theatre — each peer reviews only two others, so any aggregation is too thin to be a meaningful signal. Do not attempt to rank the stage-1 answers based on stage-2 critiques.
