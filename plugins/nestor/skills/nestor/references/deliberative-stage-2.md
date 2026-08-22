@@ -23,6 +23,8 @@ The three calls are independent of each other — each reviewer receives a fixed
 
 Note: `mcp__pal__chat` is used **only** for stage 2 cross-critique calls. It is never used as a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
 
+**Always pass `working_directory_absolute_path`** in every `mcp__pal__chat` call — pal's input validation rejects the call without it (observed 2026-08-13: all three parallel stage-2 calls burned a failed round on the missing param before retry).
+
 ## Critique prompt template
 
 Use this template verbatim for every stage 2 call. Substitute the original question and the two anonymised answers:

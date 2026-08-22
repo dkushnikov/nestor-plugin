@@ -171,8 +171,9 @@ After every Nestor consultation, append a metadata record to the current session
   router_decision: <mode + preset + stances>
   router_rule_matched: <rule number from the table>
   models_used: <the models that actually answered, after any fallback substitutions>
-  degraded: <false | which slot failed and what was substituted or dropped>
+  degraded: <false | which slot failed and what was substituted or dropped — write exactly `false` when the run was clean; never append comments after `false` (the analytics sweep parses this field mechanically)>
   stage2: <run | partial (N/3 critiques) | skipped-adversarial | n/a>
+  notes: <optional free-text anomalies — background-migrated steps, double answers, retries that succeeded; anything worth recording that is NOT a degradation>
   session_overrode_router: <true | false; if true, what was overridden and why>
   session_added_qualification: <true | false; if true, what session context shaped the qualification>
 ```
