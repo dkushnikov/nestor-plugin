@@ -53,7 +53,7 @@ The rigid "one concrete strength / one concrete flaw / one missing consideration
 Stage 2 uses `mcp__pal__chat`, so the consensus-run degraded handling in SKILL.md Step 4 does not cover it directly. Rules:
 
 - **A critic call fails or returns unusable output** (error, empty content, off-topic): retry once with that critic's same-vendor fallback from `presets.md`. If the retry also fails, proceed without that critique.
-- **Reasoning models need output headroom.** Several roster models (Kimi K3, the Sol family) spend tokens on reasoning before emitting content; a tight output cap yields an empty `content` with the budget consumed. Do not set restrictive output limits on stage-2 calls, and treat empty-content-with-usage as a failed call (retry per above), not as a null critique.
+- **Reasoning models need output headroom.** Several roster models (the Sol family, Qwen 3.7 Max) spend tokens on reasoning before emitting content; a tight output cap yields an empty `content` with the budget consumed. Do not set restrictive output limits on stage-2 calls, and treat empty-content-with-usage as a failed call (retry per above), not as a null critique.
 - **Proceed with 2/3 critiques**, flagging `stage2: partial (2/3)` in run metadata and the degradation in the return envelope's `confidence`.
 - **With 0 or 1 critiques, do not synthesise as deliberative.** Present the stage-1 answers with a stage-1-only label and the failure reported honestly — a single critique masquerading as peer review is worse than visibly skipping stage 2.
 
