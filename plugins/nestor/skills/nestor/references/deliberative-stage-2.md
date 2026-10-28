@@ -7,7 +7,7 @@ Deliberative mode is a two-stage council protocol. Stage 1 collects three neutra
 Stage 2 is specific to **deliberative mode**. Adversarial mode does not have a stage 2 — adversarial runs end with synthesis of the three stance-assigned answers from stage 1 directly.
 
 Deliberative mode is routed to by:
-- Router rule 2 (technical implementation decision with a clear axis)
+- Router rule 2 (artifact review against criteria, or compare/select among named technical approaches)
 - Router rule 3 (factual or research question requiring web-grounded verification)
 - Router rule 4 (exploratory or open-ended framing)
 
@@ -23,7 +23,9 @@ The three calls are independent of each other — each reviewer receives a fixed
 
 Note: `mcp__pal__chat` is used **only** for stage 2 cross-critique calls. It is never used as a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
 
-**Always pass `working_directory_absolute_path`** in every `mcp__pal__chat` call — pal's input validation rejects the call without it (observed 2026-08-13: all three parallel stage-2 calls burned a failed round on the missing param before retry).
+**Always pass `working_directory_absolute_path`** in every `mcp__pal__chat` call — pal's input validation rejects the call without it (observed 2026-08-13: all three parallel stage-2 calls burned a failed round on the missing param before retry). The directory must exist (2026-10-12: a scratchpad path from another session failed validation).
+
+**Same evidence packet as stage 1.** Whatever files stage 1 embedded via `relevant_files` (the question packet, the artifact under review) go to every critic via `absolute_file_paths` — the identical list, nothing added. A critic asked to verify a number or a quote without the source will call it fabricated (2026-10-12: two critics flagged figures present in the attached `results.md` as hallucinated). The packet never grows in stage 2: anything that did not pass the question gate's privacy check for stage 1 does not enter here either. Put the original question in the file packet when it is long; the prompt template then references the file instead of repeating it.
 
 ## Critique prompt template
 
@@ -55,8 +57,10 @@ The rigid "one concrete strength / one concrete flaw / one missing consideration
 Stage 2 uses `mcp__pal__chat`, so the consensus-run degraded handling in SKILL.md Step 4 does not cover it directly. Rules:
 
 - **A critic call fails or returns unusable output** (error, empty content, off-topic): retry once with that critic's same-vendor fallback from `presets.md`. If the retry also fails, proceed without that critique.
-- **Reasoning models need output headroom.** Several roster models (the Sol family, Qwen 3.7 Max) spend tokens on reasoning before emitting content; a tight output cap yields an empty `content` with the budget consumed. Do not set restrictive output limits on stage-2 calls, and treat empty-content-with-usage as a failed call (retry per above), not as a null critique.
+- **Reasoning models need output headroom.** Several roster models (the GPT-6 family, Gemini 4 Argon, Kimi K3.1 Pro, Qwen 3.8 Max) spend tokens on reasoning before emitting content; a tight output cap yields an empty `content` with the budget consumed. Do not set restrictive output limits on stage-2 calls, and treat empty-content-with-usage as a failed call (retry per above), not as a null critique.
+- **Long packets go to the background.** Thinking-heavy seats regularly exceed the host's ~120 s foreground window on council-size prompts; the host returns the critique later as a task result. Wait for it — it is a delivered critique, not a failed one — and record the seat in the `background` metadata field. A critique that never arrives (idle timeout) is the failed-call case above (2026-10-22: Qwen critic died after 2054 s → same-vendor fallback).
 - **Proceed with 2/3 critiques**, flagging `stage2: partial (2/3)` in run metadata and the degradation in the return envelope's `confidence`.
+- **Partial roster from stage 1 (2 usable answers).** Each critic then receives one peer answer as `Response A` and the template is reduced accordingly (no `Response B`, no "both responses" question); flag `stage2: partial-roster`. Peer critique on two answers still caught errors (2026-09-24), so it runs — labelled, not skipped.
 - **With 0 or 1 critiques, do not synthesise as deliberative.** Present the stage-1 answers with a stage-1-only label and the failure reported honestly — a single critique masquerading as peer review is worse than visibly skipping stage 2.
 
 ## Research-mode stage 2: claim-level grounding
@@ -88,6 +92,7 @@ Claude (acting as Nestor) synthesises from **six inputs**: three stage-1 answers
 1. Extract the **crux claim** — the specific factual or logical point the sides actually diverge on, not the surface conclusion.
 2. For high-stakes questions, run **one grounded verification pass on the crux** (evidence lookup, file read, logic re-derivation) before synthesising. Verify with evidence, not with another model's opinion — the same research found that re-judging a split with an additional LLM has *negative* net gain, while evidence-grounded checks flip verdicts with high precision.
 3. Whatever the outcome, carry the dissent into the return envelope's `dissenting_view` with its reasoning intact. A synthesised middle position that erases the split is worse than an honest fork.
+4. **Type the crux** in `dissenting_view` — `fact` (checkable against a source), `inference` (same facts, different reasoning), `value` (different weighting of outcomes), `constraint` (one side assumes a limit the other does not) — and derive `next_check` from it: facts get a lookup, inferences a re-derivation, values a question to the decision owner, constraints a confirmation of the limit. The type is what makes the dissent actionable; it is not a verdict on who is right.
 
 ## Empirical evidence for stage 2 value
 

@@ -1,6 +1,6 @@
 ---
 name: nestor
-description: This skill should be used when the user asks to "ask Nestor", "go to Nestor", "сходи к Нестору", "третье мнение", "что думает совет", "прогони через совет", "глубокий разбор", "важное решение", "критично", "high stakes", "critical decision", "think carefully", "deliberate", "council", "совет", "спросить модели", "second opinion", "что думают другие", "what does the council think", or mentions needing multi-model consultation. Also invoke when you judge your own answer under-calibrated and need an independent multi-model read. Nestor convenes a council of frontier models via the `pal` MCP server, announces its routing decision before running, and returns a synthesised judgment with an explicit agreement map and dissenting views.
+description: 'Consult Nestor / Нестор for a second opinion or third opinion from other frontier models: "what does the council think" / "что думает совет". Excludes the calling agent''s own opinion, factual lookups, and routine work.'
 ---
 
 # Nestor
@@ -9,10 +9,12 @@ Nestor is a named consultation mode for multi-model deliberation. When the user 
 
 This skill is **self-contained**. The core protocol — triggers, router, envelopes, presentation, kill criteria — lives in this file. Detailed deliberation mechanics (preset model rosters, fallback chains, the `pal.consensus` step-by-step workflow, stance semantics with the Gemini Flip empirical finding, and the deliberative stage-2 cross-critique template) live in `references/` within this skill and are loaded on demand:
 
+- `references/router-cases.md` — eight acceptance cases for routing and explicit field inheritance
 - `references/presets.md` — model rosters for `arch` / `code` / `research` / `brainstorm` / `quick` plus per-vendor fallback chains
 - `references/consensus-execution.md` — `mcp__pal__consensus` step-by-step workflow, `continuation_id` handling, stepping discipline
 - `references/stances-and-gemini-flip.md` — stance semantics (`for` / `against` / `neutral` as roleplay-not-belief) and the Gemini Flip finding
 - `references/deliberative-stage-2.md` — cross-critique protocol, the verbatim critique prompt template, anti-patterns
+- `references/setup.md` — what the host must provide: pal install, process topology, metadata sink, background delivery, redeploy
 
 ## When to invoke
 
@@ -36,7 +38,7 @@ Invoke this skill when:
 
 ## Prerequisites
 
-Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Surface this actionable message to the user: *"`pal` MCP server is not available in this session. Install it **pinned** — upstream is dormant and an unconstrained resolve crashes at import: `claude mcp add -s user pal -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server` — then set `OPENROUTER_API_KEY` and `OPENROUTER_MODELS_CONFIG_PATH` in its env (pal's built-in model registry is frozen at Dec 2025), and verify with `claude mcp list`. Nestor cannot run without it."*
+Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Tell the user: *"`pal` MCP server is not available in this session; Nestor cannot run without it. Install per `references/setup.md` (pinned release or the citations fork, OpenRouter key and model registry in the server env)."* The host must also provide a place for the run metadata record (Step 6 logging); without one, return the record inline marked `not persisted`.
 
 ## Core protocol
 
@@ -74,9 +76,9 @@ Apply the router decision table below to select four outputs:
 - `stances`: per-model assignment (default all-neutral)
 - `question_framing`: the exact text sent to each council model
 
-For rules 2–5, `question_framing` is simply the self-contained question from Step 1, passed through unchanged; for rule-2 artifact reviews, append the review dimensions (correctness, omissions, risks, strengths, recommended changes) so the council reviews against criteria rather than inventing stances. For rule 1 (position red-team), `question_framing` additionally includes a per-model `stance_prompt` tuned to the specific hypothesis — e.g., one model receives "argue for <hypothesis>", another "argue against <hypothesis>", a third "argue from a skeptical neutral stance". The stance prompts carry the *proposition*, never the asker's ownership or preference (question-gate check 4). The distinction that picks between rules 1 and 2: red-team MY POSITION → rule 1 with stances; review THIS ARTIFACT → rule 2, neutral, criteria-based. Sessions previously disambiguated this manually (52-run retro: artifact reviews wobbled between rules 1 and 4); the router now owns it.
+For base rules 2–5, `question_framing` is simply the self-contained question from Step 1, passed through unchanged; for rule-2 artifact reviews, append the review dimensions (correctness, omissions, risks, strengths, recommended changes) so the council reviews against criteria rather than inventing stances. For base rule 1 (position red-team), when the final stances are `for` / `against` / `neutral`, `question_framing` additionally includes a per-model `stance_prompt` tuned to the specific hypothesis — e.g., one model receives "argue for <hypothesis>", another "argue against <hypothesis>", a third "argue from a skeptical neutral stance". An explicit `all-neutral` override removes these opposing stance prompts; use the self-contained question without assigned advocacy. The stance prompts carry the *proposition*, never the asker's ownership or preference (question-gate check 4). The distinction that picks between rules 1 and 2: red-team MY POSITION → base rule 1 with stances; review THIS ARTIFACT → base rule 2, neutral, criteria-based. Rule 0 then overlays only the explicitly requested fields. Sessions previously disambiguated this manually (52-run retro: artifact reviews wobbled between rules 1 and 4); the router now owns it.
 
-Match rules in order; first match wins. If no rule matches with confidence, go to Step 3 with `status: needs_clarification` and return to the user for more context instead of guessing.
+Determine the base route from rules 1–5 in order, then overlay rule 0 as described below. If no base rule matches with confidence, go to Step 3 with `status: needs_clarification` and return to the user for more context instead of guessing.
 
 ### Step 3 — Announce the routing before executing
 
@@ -100,17 +102,25 @@ Use `mcp__pal__consensus` for stage 1 of any mode, and for adversarial mode end-
 
 For parameter-level details of the `mcp__pal__consensus` workflow (step numbers, `continuation_id` handling, per-step parameters), see `references/consensus-execution.md`. For the model roster and per-vendor fallback chains of the chosen preset, see `references/presets.md`. Do not invent new model combinations inside Nestor; the presets exist so that routing stays small and testable.
 
-For deliberative mode, after collecting three neutral first-round answers via `mcp__pal__consensus`, run three parallel `mcp__pal__chat` calls to collect anonymised cross-critiques. The cross-critique protocol, the verbatim stage-2 prompt template, and the associated anti-patterns live in `references/deliberative-stage-2.md`. Use that template verbatim; do not improvise.
+**One consensus workflow at a time.** pal keeps the workflow state on one tool instance per server process, and one process serves the whole session (subagents included); a second step 1 overwrites the first workflow's roster and question. Finish steps 1 → N before starting another consultation; parallel consultations belong in separate sessions. If a step reports a model or question that is not yours, stop and re-run the workflow from step 1 — never splice answers across workflows. Details and the 2026-10-05 incident: `references/consensus-execution.md`.
 
-`mcp__pal__chat` is **only** for deliberative stage-2 cross-critique — never a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
+For deliberative mode, after collecting three neutral first-round answers via `mcp__pal__consensus`, run three parallel `mcp__pal__chat` calls to collect anonymised cross-critiques — each critic receives the **same file packet** stage 1 received (`absolute_file_paths`), nothing more. The cross-critique protocol, the verbatim stage-2 prompt template, and the associated anti-patterns live in `references/deliberative-stage-2.md`. Use that template verbatim; do not improvise.
 
-**Degraded-run handling**: if a model fails, times out, or returns an unusable response (empty, obviously truncated, or off-topic) during a legitimate consensus run, proceed with the remaining models and flag the degraded roster in the return envelope's `confidence` field — e.g., `"medium, caveat: only 2/3 models responded usefully; the third returned a parse error"`. If fewer than two models produce usable output, abort synthesis and report the failure to the user honestly rather than papering over a broken council run with a forced single-model synthesis. Degraded handling is for **infrastructure failure**, not for pre-emptive optimisation — see the related "Do NOT deviate from the preset roster" anti-pattern below.
+`mcp__pal__chat` is for deliberative stage-2 cross-critique and for **seat restoration** (below) — never a substitute for `mcp__pal__consensus` as the way to run stage 1 or adversarial mode.
+
+**Degraded-run handling.** A seat has produced a *usable* answer when pal reports `status: success` with non-empty, on-topic content; pal appends failed seats to the workflow as `status: error` and keeps going, so count usable answers, not `total_responses`. A seat cannot be replaced inside a running workflow (pal reads the roster at step 1 only). Finish the workflow, then:
+
+- **3 usable** → normal run.
+- **2 usable** → proceed as a *partial-roster* run: synthesis from two answers, deliberative stage 2 with one peer answer per critic (each critic sees `Response A` only), `stage2: partial-roster`, and the gap named in the return envelope's `confidence` — e.g., `"medium, caveat: 2/3 seats usable; the Google seat returned a parse error"`.
+- **fewer than 2 usable** → abort synthesis and report the failure honestly rather than papering over a broken council run with a forced single-model synthesis.
+
+**Seat restoration** (decision 2026-10-28). Before applying the 3/2/<2 rule, try to restore each failed seat **once**: finish the consensus workflow first, then issue one `mcp__pal__chat` to the seat's first same-vendor fallback from `presets.md` with the **identical step-1 packet** — the same question text, the same `relevant_files` as `absolute_file_paths`, the same stance (for a stance-assigned seat, prepend the same stance instruction the consensus step carried; for neutral seats, none). The restored answer counts as that seat's stage-1 answer and enters stage 2 like any other. One attempt per seat; if the fallback also fails, the seat stays empty and the rule above applies. Record it as `degraded: <seat> failed (<reason>) → restored via chat: <fallback id>` and list the fallback in `models_used`. Restarting the whole workflow is not the remedy (it re-bills the healthy seats and still cannot swap models mid-run). A seat delivered from the background after the host's ~120 s window is **not** degraded — wait for the task result, continue, and list the seat in the `background` metadata field. Degraded handling is for **infrastructure failure**, not for pre-emptive optimisation — see the related "Do NOT deviate from the preset roster" anti-pattern below.
 
 ### Step 5 — Synthesise the judgment
 
 Produce the return envelope (see below). Work primarily from the council's output and the self-contained question. Do not inject session context into the synthesis.
 
-Acknowledge the honest v1 limitation: the in-session Claude performing this synthesis still has session history in its attention window. Session framing may subtly influence weighting and emphasis even with deliberate effort to exclude it. This is a known architectural limitation, not a discipline problem. When it affects the synthesis in a visible way, flag the effect to the user; do not pretend the synthesis is fully context-free.
+Acknowledge the honest v1 limitation: the calling session performing this synthesis still has session history in its attention window. Session framing may subtly influence weighting and emphasis even with deliberate effort to exclude it. This is a known architectural limitation, not a discipline problem. When it affects the synthesis in a visible way, flag the effect to the user; do not pretend the synthesis is fully context-free.
 
 ### Step 6 — Present to the user
 
@@ -118,11 +128,16 @@ Use the presentation protocol below. Lead with Nestor's judgment. Add your own s
 
 ## The router
 
-Match rules in order. First match wins. Rule 0 honors explicit user requests before any shape-based rule; rule 6 is the safe fallback when nothing else applies.
+Route in two steps:
+
+1. Determine the **base route** by the question's shape: match rules 1–5 in order; the first match supplies `mode`, `preset`, and `stances`. If none matches confidently, use rule 6.
+2. Apply **rule 0** as a field-by-field overlay: replace only the `mode`, `preset`, or `stances` the user explicitly requested. Inherit every unnamed field from the base route. An explicit mode alone inherits the base preset; an explicit preset alone inherits the base mode. Explicit `all-neutral` beats rule 1's `for` / `against` / `neutral` default. "Red-team this" is a shape trigger for rule 1, not a mode override.
+
+When announcing the matched rule, identify the base rule and any rule-0 fields that changed it; an explicit field that already agrees with the base route leaves that route unchanged.
 
 | # | Condition | Mode | Preset | Stances |
 |---|---|---|---|---|
-| 0 | Explicit user override — the user names a preset («Nestor brainstorm: …», "quick check via the quick preset") or a mode («глубокий разбор» → deliberative; "red-team this" → adversarial) | as requested | as requested (if only mode is named, pick preset via rules 1–5) | all-neutral unless the user assigns stances |
+| 0 | Explicit user override — the user names a preset («Nestor brainstorm: …», "quick check via the quick preset"), a mode («глубокий разбор» → deliberative), or stances ("all stances neutral") | explicit mode, else base mode | explicit preset, else base preset | explicit stances, else base stances |
 | 1 | Position red-team — the user OWNS a position or hypothesis and wants it attacked ("red-team this", "pressure-test my position") | adversarial | arch | `for` / `against` / `neutral` with `stance_prompt` tuned to the hypothesis; the proposition travels, the asker's ownership and preference do not |
 | 2 | Technical operation on an artifact or options — review a drafted artifact (spec, design doc, API, schema, plan, typology) against requirements and constraints with the author's position withheld, OR compare/select among named technical approaches | deliberative | `code` if the artifact/decision is implementation-bound (spec, API, schema, tooling), else `arch` | all-neutral; for artifact review use review dimensions (correctness, omissions, risks, strengths, recommended changes), not stances |
 | 3 | Factual or research question requiring web-grounded verification ("what is true about", "verify", "market data") | deliberative | research | all-neutral |
@@ -148,10 +163,15 @@ After the council runs, structure the synthesis around these fields:
 ```
 judgment: <Nestor's synthesised answer — what should be done or how the question should be framed>
 confidence: <low | medium | high + brief reason>
+assumptions: <the 1–3 premises the judgment stands on — facts taken from the question as true, or inferences the council shared>
 agreement_map: <where models agreed, where they diverged, and on what dimension>
-dissenting_view: <any substantive minority position, captured with its reasoning>
+dissenting_view: <any substantive minority position, captured with its reasoning; tag the crux type — fact | inference | value | constraint — because the type decides what check would settle it>
+would_flip: <the evidence or condition that would reverse the judgment — what to watch for after deciding>
+next_check: <the single most informative verification to run before or right after acting, derived from the dissent's crux type; "none" is a valid answer>
 unaddressed_gaps: <what the question did not account for that the council noticed — a meta-signal back to the user>
 ```
+
+`assumptions`, `would_flip` and `next_check` exist so that a week later the *reasons* for a decision can be reconstructed from the record alone, not only its verdict (added v0.7.0; trial — see kill criteria). Keep them short; a templated "no assumptions" is a failed field, not a filled one.
 
 ## Presentation protocol
 
@@ -182,12 +202,16 @@ After every Nestor consultation, append a metadata record to the current session
   router_rule_matched: <rule number from the table>
   models_used: <the models that actually answered, after any fallback substitutions>
   degraded: <false | which slot failed and what was substituted or dropped — write exactly `false` when the run was clean; never append comments after `false` (the analytics sweep parses this field mechanically)>
-  stage2: <run | partial (N/3 critiques) | skipped-adversarial | n/a>
+  stage2: <run | partial (N/3 critiques) | partial-roster | skipped-adversarial | n/a>
+  background: <none | the seats whose stage-1 step or stage-2 critique was delivered from the host's background after the ~120 s window, e.g. `kimi (step 3, critique)` — delivery cost, not a degradation>
   outcome: <pending | one line: the council's verdict AND what the session/user did with it — recommendation ≠ decision, record both; when a `pending` outcome resolves later in the session, update the record>
-  notes: <optional free-text anomalies — background-migrated steps, double answers, retries that succeeded; anything worth recording that is NOT a degradation>
+  notes: <optional free-text anomalies — double answers, retries that succeeded; anything worth recording that is NOT a degradation>
   session_overrode_router: <true | false; if true, what was overridden and why>
   session_added_qualification: <true | false; if true, what session context shaped the qualification>
+  qualification_kind: <none | estate-missed | estate-withheld | new-evidence | mixed — see below>
 ```
+
+`qualification_kind` classifies *why* the session had to qualify the council's answer (v0.7.0, P9 of the 2026-10-27 review): `estate-missed` — something that already existed (tool, decision, constraint) was left out of the question and could have been included; `estate-withheld` — it was left out on purpose by the privacy pass (anonymised packet) and translated back locally; `new-evidence` — the session held evidence the council could not inspect (files, live systems, verbatim sources); `mixed` when several apply, naming the dominant one. Only `estate-missed` is the question gate's failure; the previous single boolean conflated the three and made the gate unmeasurable (29-run review: 16 "estate-shaped" qualifications of which ~9 were deliberate withholding).
 
 The `models_used` / `degraded` / `stage2` / `outcome` fields exist so the kill criteria and the roster rollback condition are computable from the records themselves — without them, degraded-run rate, fallback frequency, and recommendation-acceptance are invisible to later analytics.
 
@@ -216,21 +240,25 @@ v1 Nestor is experimental. Revisit after ~10 real uses. Rip-out conditions:
 - **Latency avoidance** — users start skipping Nestor because the overhead exceeds the value
 - **Cognitive tax** — the named persona adds mental overhead rather than reducing it
 
-Revisit executed 2026-08-22 at 52 runs — no condition fired; deliberative mode and the persona layer kept (decision note in the Atlas vault, Projects/Nestor). Standing cadence from v0.5.0: **review after ~15 runs on the current spec version**, checking three falsifiable metrics against the retro baseline:
+Revisit executed 2026-08-22 at 52 runs — no condition fired; deliberative mode and the persona layer kept (decision note kept with the host's project records). Standing cadence from v0.5.0: **review after ~15 runs on the current spec version**, checking three falsifiable metrics against the retro baseline:
 
 - **estate-driven qualification rate** (share of `session_added_qualification` entries that supply estate the question omitted; baseline ~20/43) — should FALL with the question gate;
 - **manual preset-override rate** (baseline: every code-preset run reached via override, rule 2 fired 0/52) — should FALL with the operation-shaped router;
 - **`outcome` fill rate** (baseline 13/52) — should RISE with the lifecycle field.
+
+**Review #1 of v0.5.0 (2026-10-27, 29 runs; decision note kept with the host's project records):** no kill criterion fired (override 1/29; stage 2 caught concrete errors in nearly every run; October was the busiest month on record; the name is in active use). Preset-override rate — PASS (rule 2 fired 17/29 vs 0/52). `outcome` fill — PASS (28/29). Estate-driven qualification — inconclusive: the boolean conflated deliberate privacy withholding with gate misses; replaced by `qualification_kind` (P9). **Next review (`spec-v0.5.0-r2`, ~15 runs) starts a new baseline on that field** and also judges the v0.7.0 trial fields: `assumptions` / `would_flip` / `next_check` stay if, on 5 runs, the record alone lets the user reconstruct why a decision was taken; drop them if they come back templated in 4 of 5.
 
 Rip-out cost is near zero: delete the plugin. Preset rosters and protocol details are preserved in git history and `references/` files — they can be re-activated as a standalone skill without rebuilding from scratch.
 
 ## Related
 
 **Within this plugin (progressive disclosure — load on demand):**
+- `references/router-cases.md` — eight acceptance cases for routing and explicit field inheritance
 - `references/presets.md` — model rosters + per-vendor fallback chains
 - `references/consensus-execution.md` — `mcp__pal__consensus` step-by-step workflow details
 - `references/stances-and-gemini-flip.md` — stance semantics + Gemini Flip empirical finding
 - `references/deliberative-stage-2.md` — cross-critique protocol + verbatim prompt template
+- `references/setup.md` — host requirements (pal install, topology, metadata sink, redeploy)
 
 **External:**
 - [pal MCP server](https://github.com/BeehiveInnovations/pal-mcp-server) — the multi-model MCP server Nestor depends on

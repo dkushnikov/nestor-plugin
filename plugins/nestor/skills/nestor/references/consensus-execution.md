@@ -9,7 +9,7 @@ A consensus call with N models requires N tool invocations:
 - **Steps 2 through N** — capture each subsequent model's response one at a time
 - The **last step** (step N for an N-model preset) has `next_step_required: false`, which tells pal to synthesise the accumulated responses
 
-For a 3-model preset (all Nestor presets are 3-model), this is **three steps total**.
+For a 3-model preset (all Nestor presets are 3-model), this is **three steps total**. `total_steps` = N, the number of models. pal's own tool description says "models + 1"; the server normalises `total_steps` to `len(models)` at step 1 regardless (observed 2026-10-18: a 4 was silently turned into 3). Pass N.
 
 ## Step 1 parameters
 
@@ -19,6 +19,7 @@ step_number: 1
 total_steps: 3  (for a 3-model preset)
 next_step_required: true
 findings: "<your independent analysis before seeing any model response — not shared with the models>"
+relevant_files: ["<absolute paths of the question packet / artifact under review>"]  (optional; embedded for EVERY model, blinded)
 models: [
   {"model": "<full-model-id-1>", "stance": "<stance>"},
   {"model": "<full-model-id-2>", "stance": "<stance>"},
@@ -27,6 +28,8 @@ models: [
 ```
 
 Step 1 returns a `continuation_id` in the response payload. **Save it immediately** — you will need to pass it to every subsequent step in the same workflow.
+
+**`models` is read at step 1 only.** pal stores the roster on the tool instance at step 1 and consults `models[step_number - 1]` on each later step; a `models` list passed on step 2 or 3 is ignored. There is no in-workflow substitution — see "Seat failure inside a workflow" below.
 
 ## Steps 2 and 3 parameters
 
@@ -41,14 +44,24 @@ findings: "<summarise what the previous model said — this becomes the internal
 
 On step 3 (the last model in a 3-model preset), set `next_step_required: false` to trigger pal's synthesis. The workflow is complete when that step returns.
 
-## continuation_id handling
+Each model receives the **original step-1 question** (pal keeps it as `original_proposal`); the `step` text of steps 2+ is never shown to any model.
 
-pal uses a single shared process for all consensus runs. The `continuation_id` is the handle that links steps within one workflow. It must be passed correctly or pal loses the workflow state.
+## One workflow at a time — the state contract
 
-- **Main thread (normal Nestor use)**: pass `continuation_id` from step 1 to every subsequent step. This is the happy path.
-- **Subagent or parallel runs**: do NOT pass `continuation_id`. Each step will be independent — you lose cross-step context but avoid thread contamination from parallel workflows running concurrently. If step 2+ returns the wrong models or the wrong question, that is continuation_id contamination — retry without passing the ID.
+pal keeps the consensus workflow state (question, roster, accumulated answers) on **one `ConsensusTool` instance per pal server process**. Step 1 of any workflow overwrites that state; steps 2+ read it. The `continuation_id` links the steps for conversation memory, but it does **not** reload the state — a step 2 always consults the roster of whichever step 1 ran last on that process.
 
-Nestor calls happen on the main thread, so the main-thread rule applies: pass `continuation_id` through every step.
+The practical boundary: **one pal process serves one Claude Code session**, including its subagents and parallel tool calls. Therefore:
+
+- **One unfinished `consensus` workflow per session at a time.** Finish steps 1 → N before starting another consensus. Parallel consultations need separate sessions, not separate `continuation_id`s. (Observed 2026-10-05: three workflows launched within a minute in one session — the Gemini and Qwen seats answered a neighbouring question and had to be re-run sequentially.)
+- **Always pass `continuation_id`** from step 1 to every later step. Omitting it isolates nothing — it only drops the conversation memory.
+- **If step 2+ reports a model or question that is not yours**, the state was overwritten. Stop; do not splice answers across workflows. Re-run the whole workflow from step 1 once the other one has finished.
+- **Stage-2 `pal.chat` calls are a different case.** `chat` carries no workflow state; the three critiques may run in parallel (one assistant message, three calls) as `deliberative-stage-2.md` specifies.
+
+## Seat failure inside a workflow
+
+A failing model does not stop the workflow: pal appends `{"status": "error", ...}` to `accumulated_responses` and moves on, and the final `total_responses` counts error entries too. **Count usable answers by `status: success` with non-empty content, never by `total_responses`.**
+
+A failed seat cannot be replaced mid-workflow (`models` is step-1-only). Finish the workflow with the remaining seats, then **restore the seat once** with a single `mcp__pal__chat` to its first same-vendor fallback (`presets.md`), carrying the identical step-1 packet: the same question text (pal's `original_proposal`), the same files via `absolute_file_paths`, the same stance instruction, and `working_directory_absolute_path`. The restored answer is that seat's stage-1 answer. Then apply the degraded-run contract in Nestor SKILL.md Step 4 (three usable → normal stage 2; two → partial-roster run, labelled; fewer than two → no synthesis). Do not restart the workflow to swap a model — it re-bills the healthy seats and the roster is still fixed at step 1. Decision 2026-10-28 (external audit finding F3; the alternative — restarting the whole workflow with a substitute roster — re-bills the healthy seats and was rejected).
 
 ## Stepping discipline
 
@@ -58,7 +71,9 @@ Nestor calls happen on the main thread, so the main-thread rule applies: pass `c
 - Do not substitute `mcp__pal__chat` calls for consensus steps when the preset is set
 - Do not pre-emptively deviate from the preset roster based on runtime optimisation reasoning — see `presets.md` for the authoritative-at-runtime rule
 
-If a model fails or returns an unusable response during a step, invoke the **degraded-run handling** described in Nestor SKILL.md Step 4 — flag the missing model in the return envelope's `confidence` field, do not silently drop it.
+## Background delivery
+
+The host moves any MCP call that exceeds ~120 s to the background and returns its result later as a task notification. That is a normal outcome for long packets on thinking-heavy seats (2026-09 → 10: most Qwen step-3 calls), not a failure: wait for the notification, then continue with the next step. Record background-delivered seats in run metadata (`background:` field) — the roster review weighs them (rollback condition (c) in `presets.md`). A call that never returns is the degraded case above.
 
 ## Practical note: use of `findings` field
 

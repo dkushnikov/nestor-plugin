@@ -43,6 +43,8 @@ Nestor requires [pal](https://github.com/BeehiveInnovations/pal-mcp-server) — 
 claude mcp add -s user pal -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
 ```
 
+> **Citations caveat:** pal v9.8.2 builds its response from `message.content` only and drops the `url_citation` annotations OpenRouter returns for Perplexity — the `research` preset then reports sources it cannot show. The maintained fix is a small patch (`_append_provider_citations` in the OpenAI-compatible provider; branch `atlas/citations` of [dkushnikov/pal-mcp-server](https://github.com/dkushnikov/pal-mcp-server)). Install from that checkout with `--from <path-or-git-url>` if you use the `research` preset; see `plugins/nestor/skills/nestor/references/setup-atlas.md` for the reference setup.
+
 Then set your OpenRouter API key. Either export it in your shell profile:
 
 ```bash
@@ -103,15 +105,7 @@ unaddressed_gaps:
 
 ## Model presets
 
-Nestor routes questions to one of five model rosters:
-
-| Preset | Used for | Models |
-|--------|----------|--------|
-| `arch` | Red-teaming, exploratory questions | Claude Opus, Gemini Pro, GPT-5 Pro |
-| `code` | Technical decisions | Codex, Gemini Pro, Claude Opus |
-| `research` | Factual/research questions | Perplexity Sonar, Gemini Pro, GPT-5 Pro |
-| `brainstorm` | Creative divergence (explicit only) | DeepSeek, Grok, Llama Maverick |
-| `quick` | Low-stakes sanity checks | Gemini Flash, GPT-mini, DeepSeek Flash |
+Nestor routes questions to one of five model rosters — `arch`, `code`, `research`, `brainstorm`, `quick`. The current rosters, the composition rules (no synthesizer-family models, compose by low error overlap, first-party delivery) and the dated refresh history with evidence live in one place: [`references/presets.md`](plugins/nestor/skills/nestor/references/presets.md). Rosters are spec-level decisions, refreshed through design review; the skill never changes them at runtime.
 
 Full model IDs and per-vendor fallback chains: [`references/presets.md`](plugins/nestor/skills/nestor/references/presets.md).
 
