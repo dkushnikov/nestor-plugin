@@ -38,6 +38,8 @@ Two modes:
 
 Nestor requires [pal](https://github.com/BeehiveInnovations/pal-mcp-server) — a multi-model MCP server that talks to frontier models via [OpenRouter](https://openrouter.ai/). You'll need `uvx` installed ([install uv](https://docs.astral.sh/uv/getting-started/installation/)).
 
+This binding is a product decision, not a gap: Nestor is one workflow written against pal's `consensus` state machine, with OpenRouter as the single gateway to every vendor, and its model rosters are spec-level decisions (`references/presets.md`), not user settings. Another gateway, direct vendor keys or your own roster mean a fork today. If you need one, open an issue and say which models and why — that demand decides whether a roster-override contract gets built.
+
 > **Note (2026-07):** upstream pal is dormant — no releases or commits since v9.8.2 (2025-12-15). Two consequences: (1) pin the version instead of tracking HEAD; (2) **constrain the `mcp` SDK to `<2`** — pal uses the old low-level `Server` API, and with an unconstrained resolve the 2026 `mcp` SDK crashes it at import (`AttributeError: 'Server' object has no attribute 'list_tools'`). pal's built-in model registry is frozen at Dec 2025; Nestor's presets always pass full OpenRouter IDs, which resolve through pal's generic OpenRouter capabilities — enough for text-only questions, but the generic entry assumes a 32K context and pal then silently drops most files from the packet. Supply a registry (`OPENROUTER_MODELS_CONFIG_PATH`) before any consultation that sends files — see `plugins/nestor/skills/nestor/references/setup.md`.
 
 ```bash

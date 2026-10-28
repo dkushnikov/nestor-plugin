@@ -15,6 +15,7 @@ This skill is **self-contained**. The core protocol — triggers, router, envelo
 - `references/stances-and-gemini-flip.md` — stance semantics (`for` / `against` / `neutral` as roleplay-not-belief) and the Gemini Flip finding
 - `references/deliberative-stage-2.md` — cross-critique protocol, the verbatim critique prompt template, anti-patterns
 - `references/setup.md` — what the host must provide: pal install, process topology, metadata sink, background delivery, redeploy
+- `references/openrouter-models.example.json` — pal model registry for every preset and fallback id (context windows); a roster refresh updates it too, `tests/test_doc_links.py` checks the coverage
 
 ## When to invoke
 
@@ -98,7 +99,7 @@ Proceeding unless overridden.
 
 If Step 1 or Step 2 ended in `status: needs_clarification`, there is no routing to announce: return the clarification question instead of this block.
 
-This announcement is **mandatory**, not optional — and it is a *notification before execution*, not an intervention window. Printing it does not pause the session and adds no approval gate; it makes confident mis-routing visible and overridable (the user can override in their next message, and a mis-routed run can be re-routed and re-run). The session actually waits before executing only where the host's permission rules require it, where the user has asked to confirm before council calls, or where the question gate returns `needs_clarification`.
+This announcement is **mandatory**, not optional — and it is a *notification before execution*, not an intervention window. Because the session cannot tell whether its intermediate output is shown (a non-interactive `claude -p` run or a bot turn surfaces only the final answer), the final presentation **always** opens with one route line — `Route: <mode> · <preset> · <stances> · rule <base>[ + 0: <overlaid fields>]` — before the judgment; the pre-execution block stays as it is, and the route is never reported only inside the run-metadata record (observed omission on a clean-host `-p` run, 2026-10-28). Printing it does not pause the session and adds no approval gate; it makes confident mis-routing visible and overridable (the user can override in their next message, and a mis-routed run can be re-routed and re-run). The session actually waits before executing only where the host's permission rules require it, where the user has asked to confirm before council calls, or where the question gate returns `needs_clarification`.
 
 ### Step 4 — Run the council
 
@@ -128,7 +129,7 @@ Acknowledge the honest v1 limitation: the calling session performing this synthe
 
 ### Step 6 — Present to the user
 
-Use the presentation protocol below. Lead with Nestor's judgment. Add your own session-aware read only if session context materially qualifies the judgment. Keep the two layers visible — never blend them.
+Use the presentation protocol below. Open with the one-line route (Step 3), then lead with Nestor's judgment. Add your own session-aware read only if session context materially qualifies the judgment. Keep the two layers visible — never blend them.
 
 ## The router
 
@@ -187,6 +188,8 @@ unaddressed_gaps: <what the question did not account for that the council notice
 When presenting Nestor's judgment to the user, use this form if session context adds material qualifications:
 
 ```
+Route: <mode> · <preset> · <stances> · rule <base>[ + 0: <overlaid fields>]
+
 **Nestor says**: <judgment + confidence + key reasoning>
 
 **Agreement map**: <where models converged, where they diverged>
@@ -205,7 +208,7 @@ Keep the two layers **visible and labeled**. Do not blend Nestor's judgment with
 After every Nestor consultation, append a metadata record to the current session log under a `## Nestor consultations` section (create the *section* if missing — never the sink itself: a host without a session log gets the record inline, marked `not persisted`, per Prerequisites):
 
 ```
-- timestamp: <ISO datetime>
+- timestamp: <ISO datetime; a host that exposes no clock gets the ISO date, and `host clock unavailable` is appended to `notes` — never an invented time>
   trigger: <explicit phrase that fired, or implicit reason>
   router_decision: <mode + preset + stances>
   router_rule_matched: <rule number from the table>

@@ -23,4 +23,4 @@ claude plugin marketplace update nestor-plugin
 claude plugin update nestor@nestor-plugin         # per scope: -s user / -s local; restart the session
 ```
 
-Roster changes go through design review and a dated entry in `references/presets.md` §Refresh history, never a runtime edit. This repository is public: no personal names, home paths or private project references in files or commit messages (the test enforces it).
+Roster changes go through design review and a dated entry in `references/presets.md` §Refresh history, never a runtime edit — and every new id gets an entry in `references/openrouter-models.example.json` (`tests/test_doc_links.py` fails otherwise). This repository is public: no personal names, home paths or private project references in files or commit messages (the test enforces it).

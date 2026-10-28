@@ -13,12 +13,16 @@ over code) does not exist for its instructions. These checks cover what the
   3. the number of router acceptance cases SKILL.md and README claim equals the
      number of rows in references/router-cases.md;
   4. retired formulations (a guaranteed pause before tokens are spent, chat
-     "only" for stage 2, the old reference path, ...) do not come back.
+     "only" for stage 2, the old reference path, ...) do not come back;
+  5. every model id in the preset table and fallback chains has an entry in
+     references/openrouter-models.example.json — without it a refreshed seat
+     runs on pal's generic 32K capabilities and silently loses the file packet.
 
 Run:  python3 -m pytest -q tests/test_doc_links.py
       python3 tests/test_doc_links.py [<plugin root>]   (no pytest needed; exit 1 on failure)
 NESTOR_PLUGIN_ROOT=<dir> points the checks at another checkout (e.g. a snapshot).
 """
+import json
 import os
 import re
 import sys
@@ -223,6 +227,37 @@ def test_retired_formulations_stay_out():
             for m in re.finditer(re.escape(phrase), raw):
                 hits.append("%s:%d: %s" % (doc.relative_to(ROOT), line_of(raw, m.start()), phrase))
     assert not hits, "retired formulation back in the text:\n  " + "\n  ".join(hits)
+
+
+ROSTER_SECTIONS = ("Preset table", "Fallback chains per vendor", "Vendor singletons")
+MODEL_ID_RE = re.compile(r"`([a-z0-9-]+/[a-z0-9][a-z0-9.\-]*)`")
+
+
+def roster_ids():
+    """Every full OpenRouter id named in the preset table and the fallback chains (not the history)."""
+    text = (REFERENCES / "presets.md").read_text(encoding="utf-8")
+    ids, keep, seen = set(), False, set()
+    for line in text.split("\n"):
+        if line.startswith("#"):
+            heading = line.lstrip("# ").strip()
+            keep = heading in ROSTER_SECTIONS
+            if keep:
+                seen.add(heading)
+        elif keep:
+            ids.update(MODEL_ID_RE.findall(line))
+    missing_sections = sorted(set(ROSTER_SECTIONS) - seen)
+    assert not missing_sections, "presets.md roster sections renamed or gone (update ROSTER_SECTIONS): %s" % missing_sections
+    assert ids, "no model ids found in presets.md roster sections"
+    return ids
+
+
+def test_registry_example_covers_every_roster_id():
+    """references/openrouter-models.example.json must know every preset and fallback id — a roster
+    refresh that forgets the example sends the new seat to pal's generic 32K capabilities (setup.md §1)."""
+    example = json.loads((REFERENCES / "openrouter-models.example.json").read_text(encoding="utf-8"))
+    known = {m["model_name"] for m in example["models"]}
+    missing = sorted(roster_ids() - known)
+    assert not missing, "roster ids absent from references/openrouter-models.example.json:\n  " + "\n  ".join(missing)
 
 
 if __name__ == "__main__":

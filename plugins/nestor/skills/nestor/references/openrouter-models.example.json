@@ -1,0 +1,353 @@
+{
+  "_README": {
+    "description": "Example OpenRouter model registry for the Nestor presets (v0.7.0 rosters + per-vendor fallback chains, references/presets.md). pal's built-in registry is frozen at Dec 2025 and knows none of these ids; without a registry pal assumes a 32K context window and drops most files from the packet (references/setup.md §1). Copy this file somewhere outside the plugin, point OPENROUTER_MODELS_CONFIG_PATH at it in the pal server env, and keep context_window / max_output_tokens in step with the vendor pages when you refresh a roster. Aliases are for ad-hoc pal chat calls; Nestor always passes full ids.",
+    "updated": "2026-10-28",
+    "documentation": "https://github.com/BeehiveInnovations/pal-mcp-server/blob/main/docs/custom_models.md"
+  },
+  "models": [
+    {
+      "model_name": "openai/gpt-6-astra",
+      "aliases": [
+        "astra",
+        "gpt6"
+      ],
+      "context_window": 1050000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 20
+    },
+    {
+      "model_name": "google/gemini-4-argon",
+      "aliases": [
+        "argon",
+        "gemini4",
+        "gemini"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 20
+    },
+    {
+      "model_name": "moonshotai/kimi-k3.1-pro",
+      "aliases": [
+        "kimi",
+        "k31",
+        "kimipro"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 131072,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 19
+    },
+    {
+      "model_name": "perplexity/sonar-pro-search",
+      "aliases": [
+        "sonarpro"
+      ],
+      "context_window": 200000,
+      "max_output_tokens": 16384,
+      "intelligence_score": 13
+    },
+    {
+      "model_name": "deepseek/deepseek-v4-pro-0813",
+      "aliases": [
+        "deepseek",
+        "dsv4pro0813"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 131072,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 17
+    },
+    {
+      "model_name": "x-ai/grok-4.7",
+      "aliases": [
+        "grok",
+        "grok47"
+      ],
+      "context_window": 500000,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 18
+    },
+    {
+      "model_name": "qwen/qwen3.8-max",
+      "aliases": [
+        "qwen",
+        "qwenmax",
+        "qwen38"
+      ],
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 10.0,
+      "intelligence_score": 18
+    },
+    {
+      "model_name": "google/gemini-3.5-flash-lite",
+      "aliases": [
+        "flashlite"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_json_mode": true,
+      "intelligence_score": 12
+    },
+    {
+      "model_name": "openai/gpt-6-luna",
+      "aliases": [
+        "luna",
+        "gpt6luna"
+      ],
+      "context_window": 1050000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 12
+    },
+    {
+      "model_name": "deepseek/deepseek-v4.1-flash",
+      "aliases": [
+        "dsflash41"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 131072,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 13
+    },
+    {
+      "model_name": "openai/gpt-6.1-sol",
+      "aliases": [
+        "sol61",
+        "gpt6.1"
+      ],
+      "context_window": 1050000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 19
+    },
+    {
+      "model_name": "openai/gpt-6.1-terra",
+      "aliases": [
+        "terra",
+        "gpt6.1terra"
+      ],
+      "context_window": 1050000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 17
+    },
+    {
+      "model_name": "openai/gpt-5.3-codex",
+      "aliases": [
+        "codex"
+      ],
+      "context_window": 400000,
+      "max_output_tokens": 128000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "allow_code_generation": true,
+      "intelligence_score": 18
+    },
+    {
+      "model_name": "openai/gpt-5.6-luna",
+      "aliases": [
+        "luna56"
+      ],
+      "context_window": 1050000,
+      "max_output_tokens": 128000,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "intelligence_score": 13
+    },
+    {
+      "model_name": "google/gemini-3.8-flash",
+      "aliases": [
+        "flash",
+        "flash38"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "allow_code_generation": true,
+      "intelligence_score": 19
+    },
+    {
+      "model_name": "google/gemini-3.1-pro-preview",
+      "aliases": [
+        "geminipro"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 20.0,
+      "intelligence_score": 18
+    },
+    {
+      "model_name": "google/gemini-3.1-flash-lite",
+      "aliases": [
+        "flashlite31"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_json_mode": true,
+      "intelligence_score": 11
+    },
+    {
+      "model_name": "moonshotai/kimi-k3",
+      "aliases": [
+        "k3"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 10.0,
+      "allow_code_generation": true,
+      "intelligence_score": 19
+    },
+    {
+      "model_name": "deepseek/deepseek-v4-pro",
+      "aliases": [
+        "dsv4"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "allow_code_generation": true,
+      "intelligence_score": 17
+    },
+    {
+      "model_name": "deepseek/deepseek-v4-flash",
+      "aliases": [
+        "dsflash"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_json_mode": true,
+      "intelligence_score": 12
+    },
+    {
+      "model_name": "qwen/qwen3.7-max",
+      "aliases": [
+        "qwen37max"
+      ],
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 10.0,
+      "intelligence_score": 17
+    },
+    {
+      "model_name": "qwen/qwen3.7-plus",
+      "aliases": [
+        "qwenplus"
+      ],
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "supports_json_mode": true,
+      "intelligence_score": 14
+    },
+    {
+      "model_name": "x-ai/grok-4.6",
+      "aliases": [
+        "grok46"
+      ],
+      "context_window": 500000,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 10.0,
+      "allow_code_generation": true,
+      "intelligence_score": 19
+    },
+    {
+      "model_name": "x-ai/grok-4.5",
+      "aliases": [
+        "grok45"
+      ],
+      "context_window": 500000,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "max_image_size_mb": 10.0,
+      "allow_code_generation": true,
+      "intelligence_score": 18
+    },
+    {
+      "model_name": "perplexity/sonar-deep-research",
+      "aliases": [
+        "sonardeep"
+      ],
+      "context_window": 128000,
+      "max_output_tokens": 16384,
+      "intelligence_score": 14
+    }
+  ]
+}
