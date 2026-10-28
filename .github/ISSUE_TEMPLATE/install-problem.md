@@ -14,6 +14,6 @@ Which step stopped, and the exact output (redact the key — it must never appea
 - `claude plugin list --json` — the `nestor@nestor-plugin` entry
 - The command you ran and what Claude Code or pal printed
 
-If pal connected but a consultation failed: the run-metadata record (or the error text) and the preset that was routed. If files were part of the question: whether `OPENROUTER_MODELS_CONFIG_PATH` was set (without it pal assumes a 32K context and drops most files — `references/setup.md` §1).
+If pal connected but a consultation failed: the run-metadata record (the `- timestamp: …` block — in the answer, or in your session log if your host has one) or the error text, and the preset that was routed. Only `timestamp`, `router_decision`, `router_rule_matched`, `models_used`, `degraded`, `stage2`, `background` and `qualification_kind` are safe as they are; **review and redact every other field before posting** — `trigger`, `outcome`, `notes`, `session_overrode_router` and `session_added_qualification` carry your own words and context. If files were part of the question: whether `OPENROUTER_MODELS_CONFIG_PATH` was set (without it pal assumes a 32K context and drops most files — `references/setup.md` §1).
 
-Data path for context: your session → pal → OpenRouter → the three models of the preset (plus a same-vendor fallback after a seat or critic failure). Nothing is stored by the plugin; the record you paste is what the session returned to you.
+Data path for context: your session → pal → OpenRouter → the three models of the preset (plus a same-vendor fallback after a seat or critic failure). The plugin stores nothing; the record exists only where your session wrote it.
