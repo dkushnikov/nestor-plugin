@@ -37,7 +37,7 @@ The host moves MCP calls over ~2 minutes to the background and delivers the resu
 What a session loads depends on how the marketplace was added (Claude Code 2.1.296, plugin loading reference):
 
 - **Local path** (`claude plugin marketplace add <path-to-clone>`): the plugin loads *in place* from the source directory — `claude plugin list` shows `Read from: <path-to-clone>/plugins/nestor`, and a session's `Read` of a reference file opens the source path. An edit is live at the next session start or `/reload-plugins`, with no version bump and no `plugin update`; the cache copy exists but is not what the session reads. The only step after an edit is `claude plugin validate <repo>`.
-- **GitHub / git** (`claude plugin marketplace add <owner>/<repo>`): the session loads a cached copy, and the `version` string in `plugins/nestor/plugin.json` decides whether `claude plugin update` replaces it — same string, same files (Claude Code reports `is already at the latest version`). A change reaches these users only after **both** steps: bump the version, and push the commit to the branch the marketplace is cloned from (`main`). A bump that stays local changes nothing for them — the clean-host test of 2026-10-28 installed 0.7.4 from GitHub while 0.7.5 sat unpushed.
+- **GitHub / git** (`claude plugin marketplace add <owner>/<repo>`): the session loads a cached copy, and the **push** is what ships a change — `claude plugin update` fetches `main` and installs whatever commit is there. With the manifest at `plugins/nestor/plugin.json` (not at the documented `<plugin root>/.claude-plugin/plugin.json`), Claude Code 2.1.296 shows the `version` string on a fresh install (`Version: 0.7.6`) but keys updates by commit (`updated from 0.7.4 to 58242bfd8f9c`), so the version string is for humans and release notes, not the update gate — keep bumping it per release anyway. A commit that stays local changes nothing for these users: the clean-host test of 2026-10-28 installed 0.7.4 from GitHub while 0.7.5 sat unpushed, and received 0.7.6 right after the push.
 
 Refresh a cached install (GitHub / git marketplace, after the push):
 
@@ -47,7 +47,7 @@ claude plugin marketplace update nestor-plugin   # re-fetch the marketplace
 claude plugin update nestor@nestor-plugin         # per installed scope: -s user / -s local
 ```
 
-`claude plugin list` shows the computed version (the manifest `version` on a current Claude Code; an install record created by an older version may still show a 12-character git hash — that is not a stale copy) and, for a local path, the folder it reads from. Diff your `settings.json` after plugin CLI calls — older versions rewrote it wholesale.
+`claude plugin list` shows the computed version — the manifest `version` string after a fresh install, a 12-character commit SHA after any `plugin update` (a SHA means the install was updated, not that it is stale) — and, for a local path, the folder it reads from. Diff your `settings.json` after plugin CLI calls — older versions rewrote it wholesale.
 
 ## Tests
 
