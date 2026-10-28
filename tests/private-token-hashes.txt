@@ -1,0 +1,8 @@
+# salted sha1 of tokens that must not appear in this public repo; add with: tests/test_no_private_tokens.py --hash <token>
+f7e191d1a8e48627c96226c0084a69d1ad73fe87
+06f7a581305679aff92b22e5fadaf2b2cffe6436
+6eca60f8ccaf9d13bc1ec02aa3f309713fe176d1
+f41869b852232537fd86d1f8b641a892a46973fc
+0d58da10b18fd41881c92943a0930fd57feeab2f
+01ff1857e1ceb4a3730c6cbd6a771671643a67a6
+4fd92dbe3bde6a9880fb9668f631eaa47e65e735
