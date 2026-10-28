@@ -40,7 +40,7 @@ The importance and irreversibility of the decision weigh into this judgment (tha
 
 ## Prerequisites
 
-Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Tell the user: *"`pal` MCP server is not available in this session; Nestor cannot run without it. Install per `references/setup.md` (pinned release or the citations fork, OpenRouter key and model registry in the server env)."* The host must also provide a place for the run metadata record (Step 6 logging); without one, return the record inline marked `not persisted`.
+Verify that `mcp__pal__consensus` and `mcp__pal__chat` are available before running the protocol. If the `pal` MCP server is not configured in the current session, report the missing dependency clearly and stop — do not attempt consultation without the underlying tools. Tell the user: *"`pal` MCP server is not available in this session; Nestor cannot run without it. Install per `references/setup.md` (pinned release or the citations fork, OpenRouter key in the server env, plus a model registry before any consultation that sends files)."* The host must also provide a place for the run metadata record (Step 6 logging); without one, return the record inline marked `not persisted`.
 
 ## Core protocol
 

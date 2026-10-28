@@ -38,29 +38,33 @@ Two modes:
 
 Nestor requires [pal](https://github.com/BeehiveInnovations/pal-mcp-server) — a multi-model MCP server that talks to frontier models via [OpenRouter](https://openrouter.ai/). You'll need `uvx` installed ([install uv](https://docs.astral.sh/uv/getting-started/installation/)).
 
-> **Note (2026-07):** upstream pal is dormant — no releases or commits since v9.8.2 (2025-12-15). Two consequences: (1) pin the version instead of tracking HEAD; (2) **constrain the `mcp` SDK to `<2`** — pal uses the old low-level `Server` API, and with an unconstrained resolve the 2026 `mcp` SDK crashes it at import (`AttributeError: 'Server' object has no attribute 'list_tools'`). Supply current model IDs via `OPENROUTER_MODELS_CONFIG_PATH` (pal's built-in registry is frozen at Dec 2025; Nestor's presets always pass full OpenRouter IDs, which bypass the stale registry).
+> **Note (2026-07):** upstream pal is dormant — no releases or commits since v9.8.2 (2025-12-15). Two consequences: (1) pin the version instead of tracking HEAD; (2) **constrain the `mcp` SDK to `<2`** — pal uses the old low-level `Server` API, and with an unconstrained resolve the 2026 `mcp` SDK crashes it at import (`AttributeError: 'Server' object has no attribute 'list_tools'`). pal's built-in model registry is frozen at Dec 2025; Nestor's presets always pass full OpenRouter IDs, which resolve through pal's generic OpenRouter capabilities — enough for text-only questions, but the generic entry assumes a 32K context and pal then silently drops most files from the packet. Supply a registry (`OPENROUTER_MODELS_CONFIG_PATH`) before any consultation that sends files — see `plugins/nestor/skills/nestor/references/setup.md`.
 
 ```bash
-# Add pal as an MCP server (pinned release + compatible mcp SDK):
-claude mcp add -s user pal -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
+# Add pal as an MCP server (pinned release + compatible mcp SDK). The key goes into the
+# server's environment with -e; your shell expands $OPENROUTER_API_KEY at install time:
+claude mcp add -s user pal -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
+claude mcp list   # pal … ✔ Connected — the first start fetches and builds pal, later starts take under a second
 ```
 
-> **Citations caveat:** pal v9.8.2 builds its response from `message.content` only and drops the `url_citation` annotations OpenRouter returns for Perplexity — the `research` preset then reports sources it cannot show. The maintained fix is a small patch (`_append_provider_citations` in the OpenAI-compatible provider; branch `atlas/citations` of [dkushnikov/pal-mcp-server](https://github.com/dkushnikov/pal-mcp-server)). Install from that checkout with `--from <path-or-git-url>` if you use the `research` preset; see `plugins/nestor/skills/nestor/references/setup.md` for the reference setup.
+> **Citations caveat:** pal v9.8.2 builds its response from `message.content` only and drops the `url_citation` annotations OpenRouter returns for Perplexity — the `research` preset then reports sources it cannot show. The maintained fix is a small patch (`_append_provider_citations` in the OpenAI-compatible provider; branch `atlas/citations` of [dkushnikov/pal-mcp-server](https://github.com/dkushnikov/pal-mcp-server)). Install from that fork, pinned to a commit, if you use the `research` preset — the exact command and the model registry (required for consultations that send files) are in `plugins/nestor/skills/nestor/references/setup.md`.
 
-Then set your OpenRouter API key. Either export it in your shell profile:
-
-```bash
-export OPENROUTER_API_KEY=sk-or-v1-your-key-here
-```
-
-Or add it directly to the pal MCP config in `~/.claude.json` under `mcpServers.pal.env`.
+If you skipped `-e`, add the key to the pal entry in `~/.claude.json` under `mcpServers.pal.env`. An `export` in your shell profile reaches pal only when Claude Code itself starts from a shell that loaded that profile. Never paste the key into a Claude session.
 
 ### 2. Install Nestor
 
 ```bash
-claude plugin marketplace add <path-to-nestor-plugin>
+# from GitHub — the version the repository publishes on main:
+claude plugin marketplace add dkushnikov/nestor-plugin
+claude plugin install nestor@nestor-plugin
+claude plugin list   # nestor@nestor-plugin, Version: <from plugins/nestor/plugin.json>, enabled
+
+# from a local clone (development) — the session then reads the clone in place, see references/setup.md:
+claude plugin marketplace add <path-to-clone>
 claude plugin install nestor@nestor-plugin
 ```
+
+Nestor is one skill plus reference files: no server, no storage, nothing else to configure. Everything a consultation sends leaves your machine along one path — your session → pal → OpenRouter → the three models of the chosen preset, plus, after a seat or critic failure, that seat's documented same-vendor fallback model (`plugins/nestor/skills/nestor/references/presets.md`), which receives the identical packet.
 
 ### 3. Verify
 
@@ -68,7 +72,7 @@ Start a Claude Code session and type:
 
 > Ask Nestor — should I rewrite a 3k-line Python CLI to Go if my only pain points are dependency management and single-binary distribution?
 
-If you see a routing announcement followed by a structured judgment with agreement map, the plugin is working.
+If you see a routing announcement followed by a structured judgment with agreement map, the plugin is working. That question routes to the `code` preset — three frontier models, two stages. For a cheaper first run ask a sanity-check question about an idea, not a drafted artifact — «Ask Nestor for a quick check: any obvious mistakes in this idea — …» — which routes to rule 5: the `quick` preset (three cheap-tier models) in adversarial mode, one round, no stage 2. Pasting a spec, design doc or plan makes it a rule-2 artifact review (deliberative, two stages, frontier roster) even when you say "quick check"; and naming the preset on a different question shape keeps that shape's mode (rule 0 inherits the base mode), so «via the quick preset: should I rewrite … to Go?» still runs deliberative stage 2 on the cheap roster. A clean-host rule-5 run on 2026-10-28 took about a minute; its OpenRouter side was not metered, but three short cheap-tier calls price out at a few cents, and the larger cost is the chair — the Claude session that reads the references, runs the three steps and writes the synthesis (≈$0.36 of API tokens on Opus 5.5 in that run; on a Claude subscription it draws from your plan instead).
 
 ## Example output
 
