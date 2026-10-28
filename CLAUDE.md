@@ -16,10 +16,9 @@ python3 -m pytest -q -rs tests/                   # doc checks + private-token s
 git config core.hooksPath .githooks               # pre-push: token scan over tree and outgoing messages
 
 # A marketplace added from a local path loads the source in place: an edit is live at the next
-# session start or /reload-plugins — nothing to redeploy. GitHub installs load a cached copy of
-# the commit on main: the PUSH ships a change (plugin update tracks the commit SHA while the manifest
-# sits at plugins/nestor/plugin.json; the "version" string is for humans — bump it per release).
-# Refresh a cached (GitHub) install on a machine after the push:
+# session start or /reload-plugins — nothing to redeploy. GitHub installs load a cached copy keyed by
+# the "version" in plugins/nestor/.claude-plugin/plugin.json: a change ships only after BOTH a bump AND
+# a push to main (same string = «already at the latest version»). Refresh a cached install after the push:
 claude plugin marketplace update nestor-plugin
 claude plugin update nestor@nestor-plugin         # per scope: -s user / -s local; restart the session
 ```

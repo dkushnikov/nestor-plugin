@@ -10,7 +10,8 @@ Install **pinned** — upstream is dormant and an unconstrained resolve crashes 
 # upstream tag (citations from Perplexity are dropped — see note):
 claude mcp add -s user pal -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
 
-# recommended: the citations fork (upstream v9.8.2 + `_append_provider_citations`), pinned to a commit — the branch moves:
+# recommended: the citations fork (upstream v9.8.2 + `_append_provider_citations`), pinned to a commit — the branch moves;
+# the same commit carries the tag v9.8.2-citations.1 for reading, the hash stays in the command because tags can move:
 claude mcp add -s user pal -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" -- uvx --with "mcp<2" --from "git+https://github.com/dkushnikov/pal-mcp-server.git@61d869f421e65a8bf163f59e62df880cd2d05092" pal-mcp-server
 ```
 
@@ -37,7 +38,7 @@ The host moves MCP calls over ~2 minutes to the background and delivers the resu
 What a session loads depends on how the marketplace was added (Claude Code 2.1.296, plugin loading reference):
 
 - **Local path** (`claude plugin marketplace add <path-to-clone>`): the plugin loads *in place* from the source directory — `claude plugin list` shows `Read from: <path-to-clone>/plugins/nestor`, and a session's `Read` of a reference file opens the source path. An edit is live at the next session start or `/reload-plugins`, with no version bump and no `plugin update`; the cache copy exists but is not what the session reads. The only step after an edit is `claude plugin validate <repo>`.
-- **GitHub / git** (`claude plugin marketplace add <owner>/<repo>`): the session loads a cached copy, and the **push** is what ships a change — `claude plugin update` fetches `main` and installs whatever commit is there. With the manifest at `plugins/nestor/plugin.json` (not at the documented `<plugin root>/.claude-plugin/plugin.json`), Claude Code 2.1.296 shows the `version` string on a fresh install (`Version: 0.7.6`) but keys updates by commit (`updated from 0.7.4 to 58242bfd8f9c`), so the version string is for humans and release notes, not the update gate — keep bumping it per release anyway. A commit that stays local changes nothing for these users: the clean-host test of 2026-10-28 installed 0.7.4 from GitHub while 0.7.5 sat unpushed, and received 0.7.6 right after the push.
+- **GitHub / git** (`claude plugin marketplace add <owner>/<repo>`): the session loads a cached copy keyed by the `version` in `plugins/nestor/.claude-plugin/plugin.json` (the manifest location Claude Code documents; Claude Code computes a plugin's version from the manifest first, then the marketplace entry, then the commit). A change reaches these users only after **both** steps: bump the version and push to `main` — same string, same files (`is already at the latest version`); a commit that stays local changes nothing (the clean-host test of 2026-10-28 installed 0.7.4 from GitHub while 0.7.5 sat unpushed). History: through 0.7.6 the manifest sat at the plugin root (`<plugin root>/plugin.json`, beside `skills/`), and `claude plugin update` then keyed by commit SHA (`updated from 0.7.4 to 58242bfd8f9c`) while a fresh install still showed the version string — the move to the standard location in 0.7.7 makes the version string the gate per Claude Code's documented rule (to be confirmed by the first `plugin update` onto 0.7.7).
 
 Refresh a cached install (GitHub / git marketplace, after the push):
 
@@ -47,7 +48,7 @@ claude plugin marketplace update nestor-plugin   # re-fetch the marketplace
 claude plugin update nestor@nestor-plugin         # per installed scope: -s user / -s local
 ```
 
-`claude plugin list` shows the computed version — the manifest `version` string after a fresh install, a 12-character commit SHA after any `plugin update` (a SHA means the install was updated, not that it is stale) — and, for a local path, the folder it reads from. Diff your `settings.json` after plugin CLI calls — older versions rewrote it wholesale.
+`claude plugin list` shows the computed version — the manifest `version` string; a 12-character commit SHA on an install record is what Claude Code wrote while the manifest was still outside `.claude-plugin/` (0.7.6 and earlier) — history, not a stale copy; whether 0.7.7 records show the version string is confirmed by the first update onto it — and, for a local path, the folder it reads from. Diff your `settings.json` after plugin CLI calls — older versions rewrote it wholesale.
 
 ## Tests
 

@@ -59,7 +59,7 @@ If you skipped `-e`, add the key to the pal entry in `~/.claude.json` under `mcp
 # from GitHub — the version the repository publishes on main:
 claude plugin marketplace add dkushnikov/nestor-plugin
 claude plugin install nestor@nestor-plugin
-claude plugin list   # nestor@nestor-plugin, enabled; Version: the plugin.json string on a fresh install, the commit SHA after an update
+claude plugin list   # nestor@nestor-plugin, Version: <from plugins/nestor/.claude-plugin/plugin.json>, enabled
 
 # from a local clone (development) — the session then reads the clone in place, see references/setup.md:
 claude plugin marketplace add <path-to-clone>
