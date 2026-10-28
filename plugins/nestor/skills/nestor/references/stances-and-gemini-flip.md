@@ -50,7 +50,7 @@ If you need a directional signal across models, use:
 | Red-team a specific hypothesis the user has drafted | `for` + `against` + `neutral` with `stance_prompt` targeting the hypothesis | Deliberate stress-test from known angles — the output is adversarial framing by design, not polling |
 | Stress-test from a single specific angle (e.g., security, operational risk, cost) | Single model with `stance_prompt` describing that angle | Directed attack without full for/against structure |
 
-**Default is all-neutral.** Use stances only when the user has a concrete proposal on the table and explicitly wants it pressure-tested from known angles. Nestor's router enforces this: only rule 1 (red-team) assigns non-neutral stances; all other rules use all-neutral.
+**Default is all-neutral.** Use stances only when the user has a concrete proposal on the table and explicitly wants it pressure-tested from known angles. Nestor's router enforces this: only rule 1 (red-team) assigns non-neutral stances by default, and rule 0 can assign them only on an adversarial route — a deliberative route with role stances returns `needs_clarification` (SKILL.md §The router, step 3); every other rule uses all-neutral.
 
 ## Cross-reference
 

@@ -4,7 +4,7 @@ Deliberative mode is a two-stage council protocol. Stage 1 collects three neutra
 
 ## When stage 2 runs
 
-Stage 2 is specific to **deliberative mode**. Adversarial mode does not have a stage 2 — adversarial runs end with synthesis of the three stance-assigned answers from stage 1 directly.
+Stage 2 is specific to **deliberative mode**. Adversarial mode does not have a stage 2 — adversarial runs end with synthesis of the usable stage-1 answers (stance-assigned or neutral, as routed; three on a clean run, two on a degraded one) directly.
 
 Deliberative mode is routed to by:
 - Router rule 2 (artifact review against criteria, or compare/select among named technical approaches)
@@ -21,11 +21,11 @@ The three calls are independent of each other — each reviewer receives a fixed
 
 **Balance answer order across critics.** Each stage-1 answer appears in exactly two critique prompts; assign `Response A` / `Response B` so that **each answer appears once as A and once as B** across the three calls (a cyclic rotation gives this automatically; use randomness only to pick which of the two valid rotations). Do not reuse one fixed roster ordering for all critics — ordering anchors are real and persist through deliberation: models systematically over-weight the first-presented answer even when instructed to weigh content only (arXiv 2606.19494, "Hidden Anchors", Jun 2026). Anonymisation removes identity bias; balanced order rotation removes position bias. Both are required.
 
-Note: `mcp__pal__chat` is used **only** for stage 2 cross-critique calls. It is never used as a substitute for `mcp__pal__consensus` in stage 1 or in adversarial mode.
+Note: `mcp__pal__chat` has two permitted uses in a Nestor run — stage-2 cross-critique (this file) and **seat restoration** after a finished consensus workflow (Nestor SKILL.md Step 4 §Seat restoration is the authoritative policy: one `chat` per failed seat, to its first same-vendor fallback, with the identical step-1 packet; the restored answer takes the seat's place and is not a fourth voice). It is never a pre-emptive substitute for `mcp__pal__consensus` steps in stage 1 or in adversarial mode.
 
 **Always pass `working_directory_absolute_path`** in every `mcp__pal__chat` call — pal's input validation rejects the call without it (observed 2026-08-13: all three parallel stage-2 calls burned a failed round on the missing param before retry). The directory must exist (2026-10-12: a scratchpad path from another session failed validation).
 
-**Same evidence packet as stage 1.** Whatever files stage 1 embedded via `relevant_files` (the question packet, the artifact under review) go to every critic via `absolute_file_paths` — the identical list, nothing added. A critic asked to verify a number or a quote without the source will call it fabricated (2026-10-12: two critics flagged figures present in the attached `results.md` as hallucinated). The packet never grows in stage 2: anything that did not pass the question gate's privacy check for stage 1 does not enter here either. Put the original question in the file packet when it is long; the prompt template then references the file instead of repeating it.
+**Same evidence packet as stage 1.** Whatever files stage 1 embedded via `relevant_files` (the question packet, the artifact under review) go to every critic via `absolute_file_paths` — the identical list, nothing added. A critic asked to verify a number or a quote without the source will call it fabricated (2026-10-12: two critics flagged figures present in the attached `results.md` as hallucinated). The packet never grows in stage 2: anything that did not pass the question gate's privacy check for stage 1 does not enter here either. When the question is long, put it in the file packet **at step 1** (it is then in `relevant_files` and travels to the critics as part of the identical list); the template's `<original question>` slot then reads "the question in the attached file <name>" instead of repeating it. Stage 2 never adds the question file as a new entry.
 
 ## Critique prompt template
 
@@ -56,12 +56,40 @@ The rigid "one concrete strength / one concrete flaw / one missing consideration
 
 Stage 2 uses `mcp__pal__chat`, so the consensus-run degraded handling in SKILL.md Step 4 does not cover it directly. Rules:
 
-- **A critic call fails or returns unusable output** (error, empty content, off-topic): retry once with that critic's same-vendor fallback from `presets.md`. If the retry also fails, proceed without that critique.
+- **A critic call fails or returns unusable output** (error, empty content, off-topic): retry once with that critic's same-vendor fallback from `presets.md`. If the retry also fails, proceed without that critique. This one retry per critic is the stage-2 limit; it is separate from the one stage-1 restoration attempt per seat (SKILL.md Step 4), and a stage-1 attempt is never spent on a critic. **A critic that is itself a restoration fallback gets no retry**: its vendor's one runtime fallback is already in use, the chain is never walked deeper, and the original seat has already failed — proceed without that critique (the table below has the row).
 - **Reasoning models need output headroom.** Several roster models (the GPT-6 family, Gemini 4 Argon, Kimi K3.1 Pro, Qwen 3.8 Max) spend tokens on reasoning before emitting content; a tight output cap yields an empty `content` with the budget consumed. Do not set restrictive output limits on stage-2 calls, and treat empty-content-with-usage as a failed call (retry per above), not as a null critique.
 - **Long packets go to the background.** Thinking-heavy seats regularly exceed the host's ~120 s foreground window on council-size prompts; the host returns the critique later as a task result. Wait for it — it is a delivered critique, not a failed one — and record the seat in the `background` metadata field. A critique that never arrives (idle timeout) is the failed-call case above (2026-10-22: Qwen critic died after 2054 s → same-vendor fallback).
 - **Proceed with 2/3 critiques**, flagging `stage2: partial (2/3)` in run metadata and the degradation in the return envelope's `confidence`.
-- **Partial roster from stage 1 (2 usable answers).** Each critic then receives one peer answer as `Response A` and the template is reduced accordingly (no `Response B`, no "both responses" question); flag `stage2: partial-roster`. Peer critique on two answers still caught errors (2026-09-24), so it runs — labelled, not skipped.
-- **With 0 or 1 critiques, do not synthesise as deliberative.** Present the stage-1 answers with a stage-1-only label and the failure reported honestly — a single critique masquerading as peer review is worse than visibly skipping stage 2.
+- **With 0 or 1 critiques, do not synthesise as deliberative.** Still produce the return envelope — a `judgment` synthesised from the stage-1 answers alone, `confidence` naming the missing peer review — labelled `stage2: stage-1-only`, with the failure reported honestly — a single critique masquerading as peer review is worse than visibly skipping stage 2.
+
+### Partial roster (two usable stage-1 answers)
+
+When stage 1 ends with two usable answers after the one restoration attempt (SKILL.md Step 4), stage 2 is a closed two-critic protocol:
+
+- The two surviving seats critique **each other**: seat X receives Y's answer as `Response A`, seat Y receives X's answer as `Response A`. Two `mcp__pal__chat` calls, issued in one assistant message like the full protocol.
+- Both critics receive the **same evidence packet** stage 1 received (`absolute_file_paths`, identical list) — the packet rule above applies unchanged.
+- The template is reduced accordingly: no `Response B`, and the closing question becomes "what might this response be missing that the question didn't explicitly ask about?".
+- A failed critic gets the usual single same-vendor retry — unless it is itself the restoration fallback of its seat (then no retry, as above). `stage2: partial-roster` requires **two usable critiques**; synthesis then takes two answers + two critiques (four inputs). With fewer than two critiques the run is `stage2: stage-1-only` — the one critique that did arrive may be shown as supplementary material, labelled as such, never as a completed peer review.
+- Peer critique on two answers still caught errors (2026-09-24), so it runs — labelled, not skipped.
+
+### Composition by scenario
+
+The authoritative count of calls, attempts, synthesis inputs and the `stage2` label per scenario. Restoration is the single attempt of SKILL.md Step 4; the critic retry is the single attempt above; neither adds a further attempt anywhere. The rows marked **adversarial** are adversarial mode, listed here so that one table covers both modes: adversarial never issues a critique call, whatever the seat count.
+
+| Scenario | Calls | Attempt limits | Synthesis inputs | `stage2` label |
+|---|---|---|---|---|
+| 3 usable answers, 3 usable critiques | consensus steps 1→3; 3 `chat` | — | 3 + 3 = 6 | `run` |
+| 3 usable; one critic fails, same-vendor retry succeeds | steps 1→3; 3 `chat` + 1 retry `chat` | 1 retry per critic | 3 + 3 = 6 | `run` (retry noted in `notes`) |
+| 3 usable; one critic fails and its retry fails | steps 1→3; 3 `chat` + 1 retry `chat` | 1 retry per critic | 3 + 2 = 5 | `partial (2/3)` |
+| a seat restored via its fallback; that fallback then fails as a critic | steps 1→3; 1 restoration `chat`; 3 `chat`, **no retry** for the restored seat's critic | the vendor's single runtime fallback is already in use | 3 + 2 = 5 | `partial (2/3)` |
+| 3 usable; two critics fail after their retries | steps 1→3; 3 `chat` + 2 retry `chat` | 1 retry per critic | no deliberative synthesis | `stage-1-only` |
+| a seat fails; restoration `chat` succeeds → 3 usable | steps 1→3; 1 restoration `chat`; 3 `chat` | 1 restoration per seat | 3 + 3 = 6 | `run`, `degraded: <seat> failed (<reason>) → restored via chat: <fallback>` |
+| a seat fails; restoration fails → 2 usable; both cross-critiques usable | steps 1→3; 1 restoration `chat`; 2 `chat` | 1 restoration per seat; 1 retry per critic | 2 + 2 = 4 | `partial-roster` |
+| 2 usable; one of the two critiques fails after its retry | steps 1→3; 1 restoration `chat`; 2 `chat` + 1 retry `chat` | as above | no deliberative synthesis | `stage-1-only` (the single critique shown as supplementary) |
+| fewer than 2 usable answers after restoration (either mode) | steps 1→3; restoration `chat` per failed seat | 1 restoration per seat | none | `n/a` — no synthesis, report the failure (SKILL.md Step 4) |
+| **adversarial**: 3 usable answers, no failure | steps 1→3; **0** critique calls | — | 3 answers | `skipped-adversarial` |
+| **adversarial**: a seat fails; restoration `chat` succeeds → 3 usable | steps 1→3; 1 restoration `chat`; **0** critique calls | 1 restoration per seat | 3 stage-1 answers | `skipped-adversarial`, `degraded: <seat> failed (<reason>) → restored via chat: <fallback>` |
+| **adversarial**: a seat fails; restoration fails → 2 usable | steps 1→3; 1 restoration `chat`; **0** critique calls | 1 restoration per seat | 2 stage-1 answers | `skipped-adversarial`, gap named in `confidence` |
 
 ## Research-mode stage 2: claim-level grounding
 
@@ -85,7 +113,7 @@ Search queries inherit the same neutrality rule as every other stage: no asker l
 
 ## Synthesis after stage 2
 
-Claude (acting as Nestor) synthesises from **six inputs**: three stage-1 answers plus three stage-2 critiques. Lead the synthesis with the judgment itself, then explicitly call out where the critiques **converged on shared weaknesses** in the stage-1 answers — that convergent critique is the strongest meta-signal deliberative mode produces.
+Claude (acting as Nestor) synthesises from every usable stage-1 answer plus every usable critique — **six inputs** for a full roster (3 + 3), five for `partial (2/3)` (3 + 2), four for a successful `partial-roster` run (2 + 2); the table in §Composition by scenario is authoritative. Lead the synthesis with the judgment itself, then explicitly call out where the critiques **converged on shared weaknesses** in the stage-1 answers — that convergent critique is the strongest meta-signal deliberative mode produces.
 
 **On a 2-1 split, the majority is not the verdict.** Frontier models share training data, so their errors correlate — in roughly one of four divergent cases the minority position is the correct one (arXiv 2606.29270, "Minority Sentinel", Jun 2026). When stage 1 + stage 2 leave a genuine split:
 

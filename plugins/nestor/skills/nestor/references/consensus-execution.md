@@ -53,7 +53,7 @@ pal keeps the consensus workflow state (question, roster, accumulated answers) o
 The practical boundary: **one pal process serves one Claude Code session**, including its subagents and parallel tool calls. Therefore:
 
 - **One unfinished `consensus` workflow per session at a time.** Finish steps 1 → N before starting another consensus. Parallel consultations need separate sessions, not separate `continuation_id`s. (Observed 2026-10-05: three workflows launched within a minute in one session — the Gemini and Qwen seats answered a neighbouring question and had to be re-run sequentially.)
-- **Always pass `continuation_id`** from step 1 to every later step. Omitting it isolates nothing — it only drops the conversation memory.
+- **Always pass `continuation_id`** from step 1 to every later step. Omitting it isolates nothing — it drops the conversation memory **and the file packet**: pal re-attaches step 1's `relevant_files` to steps 2+ only by merging the thread's initial context when the id is present (`server.py` `reconstruct_thread_context`; `_consult_model` reads the current request's files), so seats 2..N would answer without the files.
 - **If step 2+ reports a model or question that is not yours**, the state was overwritten. Stop; do not splice answers across workflows. Re-run the whole workflow from step 1 once the other one has finished.
 - **Stage-2 `pal.chat` calls are a different case.** `chat` carries no workflow state; the three critiques may run in parallel (one assistant message, three calls) as `deliberative-stage-2.md` specifies.
 
@@ -61,14 +61,14 @@ The practical boundary: **one pal process serves one Claude Code session**, incl
 
 A failing model does not stop the workflow: pal appends `{"status": "error", ...}` to `accumulated_responses` and moves on, and the final `total_responses` counts error entries too. **Count usable answers by `status: success` with non-empty content, never by `total_responses`.**
 
-A failed seat cannot be replaced mid-workflow (`models` is step-1-only). Finish the workflow with the remaining seats, then **restore the seat once** with a single `mcp__pal__chat` to its first same-vendor fallback (`presets.md`), carrying the identical step-1 packet: the same question text (pal's `original_proposal`), the same files via `absolute_file_paths`, the same stance instruction, and `working_directory_absolute_path`. The restored answer is that seat's stage-1 answer. Then apply the degraded-run contract in Nestor SKILL.md Step 4 (three usable → normal stage 2; two → partial-roster run, labelled; fewer than two → no synthesis). Do not restart the workflow to swap a model — it re-bills the healthy seats and the roster is still fixed at step 1. Decision 2026-10-28 (external audit finding F3; the alternative — restarting the whole workflow with a substitute roster — re-bills the healthy seats and was rejected).
+A failed seat cannot be replaced mid-workflow (`models` is step-1-only). Finish the workflow with the remaining seats, then **restore the seat once** with a single `mcp__pal__chat` to its first same-vendor fallback (`presets.md`), carrying the identical step-1 packet: the same question text (pal's `original_proposal`), the same files via `absolute_file_paths`, the same stance instruction, and `working_directory_absolute_path`. The restored answer is that seat's stage-1 answer. Then apply the degraded-run contract in Nestor SKILL.md Step 4 (deliberative: three usable → normal stage 2, two → partial-roster run with two cross-critiques, labelled; adversarial: synthesis from the usable stage-1 answers (stance-assigned or neutral, as routed) with no stage 2, `skipped-adversarial`; fewer than two usable → no synthesis in either mode). SKILL.md Step 4 §Seat restoration is the authoritative policy; this section restates it and adds no attempts. Do not restart the workflow to swap a model — it re-bills the healthy seats and the roster is still fixed at step 1. Decision 2026-10-28 (external audit finding F3; the alternative — restarting the whole workflow with a substitute roster — re-bills the healthy seats and was rejected).
 
 ## Stepping discipline
 
 **Step through every model in the preset before triggering synthesis.** The full consensus workflow is what makes "preset" mean something — it guarantees that the preset's full roster was consulted. Shortcuts violate the preset contract:
 
 - Do not terminate the workflow before all models in the preset have been stepped through
-- Do not substitute `mcp__pal__chat` calls for consensus steps when the preset is set
+- Do not substitute `mcp__pal__chat` calls for consensus steps when the preset is set (the one exception is restoring a failed seat *after* the workflow has finished, per SKILL.md Step 4)
 - Do not pre-emptively deviate from the preset roster based on runtime optimisation reasoning — see `presets.md` for the authoritative-at-runtime rule
 
 ## Background delivery

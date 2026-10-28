@@ -16,13 +16,15 @@ Nestor is **not** for simple factual questions, routine implementation decisions
 
 ## How it works
 
-When you say "ask Nestor", "third opinion", "high stakes", "what does the council think?", or similar, the plugin:
+When you address Nestor — "ask Nestor", "third opinion", "what does the council think?", or an equivalent request for other models' views — the plugin:
 
 1. Formulates a **self-contained question** — strips session context so models reason independently.
 2. **Routes** to the right deliberation mode and model roster based on question shape.
-3. **Announces its routing** before executing, so you can override a mis-route.
+3. **Announces its routing** before executing — a notification, not a pause: a mis-route is visible and you can override it in your next message; the session actually waits only where the host's permission rules, your explicit request, or a needed clarification require it.
 4. **Runs the council** via [pal](https://github.com/BeehiveInnovations/pal-mcp-server) MCP tools.
 5. **Synthesises** a judgment with an explicit agreement map, dissenting views, and unaddressed gaps.
+
+Calling a decision "critical" or "high stakes" does not by itself convene the council. The session may still decide on its own to consult on an irreversible architectural or strategic call (the skill's implicit conditions), and "what do you think?" always gets Claude's own view instead.
 
 Two modes:
 
@@ -43,7 +45,7 @@ Nestor requires [pal](https://github.com/BeehiveInnovations/pal-mcp-server) — 
 claude mcp add -s user pal -- uvx --with "mcp<2" --from "git+https://github.com/BeehiveInnovations/pal-mcp-server.git@v9.8.2" pal-mcp-server
 ```
 
-> **Citations caveat:** pal v9.8.2 builds its response from `message.content` only and drops the `url_citation` annotations OpenRouter returns for Perplexity — the `research` preset then reports sources it cannot show. The maintained fix is a small patch (`_append_provider_citations` in the OpenAI-compatible provider; branch `atlas/citations` of [dkushnikov/pal-mcp-server](https://github.com/dkushnikov/pal-mcp-server)). Install from that checkout with `--from <path-or-git-url>` if you use the `research` preset; see `plugins/nestor/skills/nestor/references/setup-atlas.md` for the reference setup.
+> **Citations caveat:** pal v9.8.2 builds its response from `message.content` only and drops the `url_citation` annotations OpenRouter returns for Perplexity — the `research` preset then reports sources it cannot show. The maintained fix is a small patch (`_append_provider_citations` in the OpenAI-compatible provider; branch `atlas/citations` of [dkushnikov/pal-mcp-server](https://github.com/dkushnikov/pal-mcp-server)). Install from that checkout with `--from <path-or-git-url>` if you use the `research` preset; see `plugins/nestor/skills/nestor/references/setup.md` for the reference setup.
 
 Then set your OpenRouter API key. Either export it in your shell profile:
 
@@ -101,7 +103,7 @@ unaddressed_gaps:
 
 1. **In-session synthesis is not architecturally isolated.** The synthesis step happens in the same Claude session, so session context is still in attention. Mitigations: self-contained question discipline, structured presentation that separates council output from session-aware commentary. A future version could use a separate sterile synthesis call.
 
-2. **The router is LLM-interpreted, not deterministic.** Routing rules live in the skill file as markdown and are applied by Claude reading them. It will occasionally mis-route on ambiguous questions. Mitigation: mandatory pre-execution announcement so you can catch and override before tokens are spent.
+2. **The router is LLM-interpreted, not deterministic.** Routing rules live in the skill file as markdown and are applied by Claude reading them. It will occasionally mis-route on ambiguous questions. Mitigation: the mandatory pre-execution routing notification makes a mis-route visible and overridable. It is a notification, not a guaranteed pause before tokens are spent — a real wait comes only from the host's rules, an explicit user request to confirm first, or a `needs_clarification` return.
 
 ## Model presets
 

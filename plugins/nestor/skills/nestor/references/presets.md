@@ -48,7 +48,7 @@ Removed vendors: **Anthropic** (no roster slots remain — the chair supplies th
 
 ### Vendor singletons
 
-None in the current rosters — every vendor slot has an in-vendor fallback chain (Perplexity's and Moonshot's are two-deep). If an entire vendor chain is exhausted during a run, that is the **degraded-run case**: do not cross-vendor swap; proceed with the remaining models and flag the roster degradation in the return envelope's `confidence` field per Nestor SKILL.md Step 4.
+None in the current rosters — every vendor slot has an in-vendor fallback chain (Perplexity's and Moonshot's are two-deep). At runtime only the **first** fallback is ever used, and at most once per seat per stage: as the seat restoration of Nestor SKILL.md Step 4 (the authoritative policy) and as the single retry of a failed stage-2 critic (`deliberative-stage-2.md`); a restored seat's critic gets no retry. If the restoration attempt fails, that is the **degraded-run case**: do not cross-vendor swap and do not walk further down the chain; proceed with the remaining models under the degraded-run contract and flag the roster degradation in the return envelope's `confidence` field. The longer chains above are design-review material — which model to seat next — not additional runtime attempts.
 
 ## Presets are authoritative at runtime
 
