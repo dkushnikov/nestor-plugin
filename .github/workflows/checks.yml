@@ -1,0 +1,35 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the private-token scan reads commit messages too
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch the pinned pal commit (consensus state contract)
+        run: |
+          git init pal-mcp-server
+          git -C pal-mcp-server fetch --depth 1 https://github.com/dkushnikov/pal-mcp-server.git 61d869f421e65a8bf163f59e62df880cd2d05092
+          git -C pal-mcp-server checkout --quiet FETCH_HEAD
+
+      - name: Doc links, metadata enums, roster coverage, private tokens, pal state contract
+        env:
+          PAL_SRC: ${{ github.workspace }}/pal-mcp-server
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest -q -rs tests/
+
+      - name: Private tokens in the pushed commit messages
+        if: github.event_name == 'push'
+        run: python3 tests/test_no_private_tokens.py --commits "${{ github.event.before }}..${{ github.sha }}"
